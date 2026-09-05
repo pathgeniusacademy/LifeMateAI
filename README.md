@@ -1,4 +1,9 @@
-# LifeMate AI — Android V1
+# LifeMate AI — Premium UI V2
+
+A polished, calm, high-level Android personal assistant UI designed to feel premium without becoming complicated.
+
+**V2 UI principles:** one obvious primary action per screen, large tap targets, calm spacing, minimal text, premium cards, clear hierarchy, dark mode, and no clutter.
+
 
 A native Android daily-life assistant built with Kotlin + Jetpack Compose.
 

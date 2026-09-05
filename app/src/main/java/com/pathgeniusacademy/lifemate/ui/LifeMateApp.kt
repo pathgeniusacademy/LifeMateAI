@@ -73,22 +73,43 @@ private fun MainShell(viewModel: AppViewModel) {
     val currentRoute = current?.destination?.route
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
             if (currentRoute in bottom.map { it.route }) {
-                NavigationBar(tonalElevation = 8.dp) {
-                    bottom.forEach { item ->
-                        NavigationBarItem(
-                            selected = currentRoute == item.route,
-                            onClick = {
-                                nav.navigate(item.route) {
-                                    popUpTo(Routes.HOME) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            },
-                            icon = { Icon(item.icon, contentDescription = item.label) },
-                            label = { Text(item.label) }
-                        )
+                Surface(
+                    color = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 10.dp,
+                    shadowElevation = 14.dp,
+                    shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp)
+                ) {
+                    NavigationBar(
+                        containerColor = Color.Transparent,
+                        tonalElevation = 0.dp,
+                        modifier = Modifier.height(78.dp)
+                    ) {
+                        bottom.forEach { item ->
+                            NavigationBarItem(
+                                selected = currentRoute == item.route,
+                                onClick = {
+                                    nav.navigate(item.route) {
+                                        popUpTo(Routes.HOME) { saveState = true }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                },
+                                icon = {
+                                    Icon(
+                                        item.icon,
+                                        contentDescription = item.label,
+                                        modifier = Modifier.size(if (currentRoute == item.route) 24.dp else 22.dp)
+                                    )
+                                },
+                                label = { Text(item.label, fontWeight = if (currentRoute == item.route) FontWeight.Bold else FontWeight.Medium) },
+                                colors = NavigationBarItemDefaults.colors(
+                                    indicatorColor = MaterialTheme.colorScheme.primaryContainer
+                                )
+                            )
+                        }
                     }
                 }
             }
@@ -114,62 +135,110 @@ private fun MainShell(viewModel: AppViewModel) {
 private fun OnboardingScreen(onFinish: (String) -> Unit) {
     var step by remember { mutableIntStateOf(0) }
     var name by remember { mutableStateOf("") }
-    val titles = listOf("Your day, finally in one place", "Offline-first by design", "Make it yours")
-    val bodies = listOf(
-        "Tasks, notes, habits, reminders, planning and an AI copilot — without juggling five different apps.",
-        "Your core organizer works without internet. AI is optional and only turns on after you connect a secure backend.",
-        "Tell LifeMate what to call you. You can change this anytime in Settings."
+    val titles = listOf(
+        "One calm place for your whole day",
+        "Simple on the surface. Powerful underneath.",
+        "Ready when you are"
     )
-    val icons = listOf(Icons.Default.Bolt, Icons.Default.Shield, Icons.Default.Person)
+    val bodies = listOf(
+        "Tasks, notes, habits, reminders and your daily plan stay together — so your head doesn't have to.",
+        "LifeMate works offline for everyday organization. Connect AI only when you want deeper help.",
+        "A clean home screen will show what matters now, not fifty things competing for attention."
+    )
+    val icons = listOf(Icons.Default.AutoAwesome, Icons.Default.Bolt, Icons.Default.WavingHand)
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    listOf(Color(0xFF5B5FEF), Color(0xFF7B61FF), MaterialTheme.colorScheme.background)
+                    listOf(Color(0xFF4146D8), Color(0xFF6D5DFB), Color(0xFFF6F7FF))
                 )
             )
-            .padding(24.dp)
+            .padding(horizontal = 22.dp)
     ) {
+        Box(
+            Modifier
+                .size(220.dp)
+                .offset(x = 210.dp, y = (-55).dp)
+                .clip(CircleShape)
+                .background(Color.White.copy(alpha = 0.08f))
+        )
         Column(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Column {
-                Spacer(Modifier.height(48.dp))
-                Box(
-                    modifier = Modifier
-                        .size(72.dp)
-                        .clip(RoundedCornerShape(22.dp))
-                        .background(Color.White.copy(alpha = 0.18f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(icons[step], null, tint = Color.White, modifier = Modifier.size(38.dp))
+                Spacer(Modifier.height(70.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(58.dp)
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(Color.White.copy(alpha = 0.16f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(icons[step], null, tint = Color.White, modifier = Modifier.size(30.dp))
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column {
+                        Text("LifeMate", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
+                        Text("Your personal day companion", color = Color.White.copy(alpha = .78f), fontSize = 13.sp)
+                    }
                 }
-                Spacer(Modifier.height(26.dp))
-                Text(titles[step], color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 38.sp)
+                Spacer(Modifier.height(42.dp))
+                Text(
+                    titles[step],
+                    color = Color.White,
+                    fontSize = 38.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    lineHeight = 42.sp
+                )
                 Spacer(Modifier.height(14.dp))
-                Text(bodies[step], color = Color.White.copy(alpha = 0.9f), fontSize = 18.sp, lineHeight = 26.sp)
-                if (step == 2) {
-                    Spacer(Modifier.height(28.dp))
-                    OutlinedTextField(
-                        value = name,
-                        onValueChange = { name = it.take(30) },
-                        label = { Text("Your name") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = Color.White,
-                            unfocusedContainerColor = Color.White,
-                            focusedTextColor = Color(0xFF1C1C26),
-                            unfocusedTextColor = Color(0xFF1C1C26),
-                            focusedBorderColor = Color.White,
-                            unfocusedBorderColor = Color.White.copy(alpha = 0.7f),
-                            focusedLabelColor = Color(0xFF5B5FEF),
-                            unfocusedLabelColor = Color(0xFF5B5FEF)
-                        )
-                    )
+                Text(
+                    bodies[step],
+                    color = Color.White.copy(alpha = 0.88f),
+                    fontSize = 17.sp,
+                    lineHeight = 25.sp
+                )
+                Spacer(Modifier.height(30.dp))
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = .14f)),
+                    shape = RoundedCornerShape(28.dp)
+                ) {
+                    Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        when (step) {
+                            0 -> {
+                                OnboardingFeature(Icons.Default.CheckCircle, "Tasks & reminders", "Know exactly what needs attention")
+                                OnboardingFeature(Icons.Default.EditNote, "Notes", "Capture ideas in seconds")
+                                OnboardingFeature(Icons.Default.LocalFireDepartment, "Habits", "Build routines without clutter")
+                            }
+                            1 -> {
+                                OnboardingFeature(Icons.Default.WifiOff, "Offline core", "Your organizer keeps working without internet")
+                                OnboardingFeature(Icons.Default.Shield, "Private by default", "AI stays optional and separate")
+                                OnboardingFeature(Icons.Default.AutoAwesome, "Smart when needed", "Ask for plans, summaries and next steps")
+                            }
+                            else -> {
+                                Text("What should I call you?", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                OutlinedTextField(
+                                    value = name,
+                                    onValueChange = { name = it.take(30) },
+                                    placeholder = { Text("Your name") },
+                                    singleLine = true,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(18.dp),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedContainerColor = Color.White,
+                                        unfocusedContainerColor = Color.White,
+                                        focusedTextColor = Color(0xFF181A2C),
+                                        unfocusedTextColor = Color(0xFF181A2C),
+                                        focusedBorderColor = Color.White,
+                                        unfocusedBorderColor = Color.White.copy(alpha = .85f)
+                                    )
+                                )
+                            }
+                        }
+                    }
                 }
             }
             Column {
@@ -178,27 +247,40 @@ private fun OnboardingScreen(onFinish: (String) -> Unit) {
                         Box(
                             Modifier
                                 .height(7.dp)
-                                .width(if (i == step) 30.dp else 9.dp)
+                                .width(if (i == step) 34.dp else 9.dp)
                                 .clip(CircleShape)
-                                .background(Color.White.copy(alpha = if (i == step) 1f else 0.35f))
+                                .background(if (i == step) Color(0xFF4E52DF) else Color(0xFFBFC2E8))
                         )
                     }
                 }
-                Spacer(Modifier.height(18.dp))
+                Spacer(Modifier.height(16.dp))
                 Button(
-                    onClick = {
-                        if (step < 2) step++ else onFinish(name.ifBlank { "Friend" })
-                    },
+                    onClick = { if (step < 2) step++ else onFinish(name.ifBlank { "Friend" }) },
                     enabled = step < 2 || name.isNotBlank(),
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color(0xFF4C4FD4))
+                    modifier = Modifier.fillMaxWidth().height(58.dp),
+                    shape = RoundedCornerShape(20.dp)
                 ) {
-                    Text(if (step == 2) "Start my day" else "Continue", fontWeight = FontWeight.Bold)
+                    Text(if (step == 2) "Open my LifeMate" else "Continue", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
                     Spacer(Modifier.width(8.dp))
                     Icon(Icons.Default.ArrowForward, null)
                 }
-                Spacer(Modifier.height(18.dp))
+                Spacer(Modifier.height(24.dp))
             }
+        }
+    }
+}
+
+@Composable
+private fun OnboardingFeature(icon: ImageVector, title: String, subtitle: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(Color.White.copy(alpha = .14f)),
+            contentAlignment = Alignment.Center
+        ) { Icon(icon, null, tint = Color.White, modifier = Modifier.size(22.dp)) }
+        Spacer(Modifier.width(12.dp))
+        Column {
+            Text(title, color = Color.White, fontWeight = FontWeight.Bold)
+            Text(subtitle, color = Color.White.copy(alpha = .74f), fontSize = 12.sp)
         }
     }
 }
@@ -214,109 +296,223 @@ private fun HomeScreen(viewModel: AppViewModel, nav: NavHostController) {
         in 12..16 -> "Good afternoon"
         else -> "Good evening"
     }
+    val nextTask = todayTasks.firstOrNull()
+    val habitProgress = if (viewModel.habits.isEmpty()) 0f else doneHabits.toFloat() / viewModel.habits.size
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 28.dp)
+        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
+        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 18.dp)
     ) {
         item {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(
-                        Brush.linearGradient(listOf(Color(0xFF5B5FEF), Color(0xFF796CFF), Color(0xFF00A7A5)))
-                    )
-                    .padding(start = 20.dp, end = 20.dp, top = 28.dp, bottom = 28.dp)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier.size(46.dp).clip(RoundedCornerShape(15.dp)).background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(viewModel.settings.displayName.take(1).uppercase(), fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
+                }
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("$greeting,", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                    Text(viewModel.settings.displayName, fontSize = 23.sp, fontWeight = FontWeight.ExtraBold)
+                }
+                FilledTonalIconButton(onClick = { nav.navigate(Routes.SETTINGS) }) {
+                    Icon(Icons.Default.Settings, "Settings")
+                }
+            }
+            Spacer(Modifier.height(20.dp))
+        }
+
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(30.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
             ) {
-                Column {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text(greeting, color = Color.White.copy(alpha = 0.86f), fontSize = 15.sp)
-                            Text(
-                                viewModel.settings.displayName.ifBlank { "Friend" },
-                                color = Color.White,
-                                fontSize = 30.sp,
-                                fontWeight = FontWeight.ExtraBold
-                            )
-                        }
-                        FilledIconButton(
-                            onClick = { nav.navigate(Routes.SETTINGS) },
-                            colors = IconButtonDefaults.filledIconButtonColors(containerColor = Color.White.copy(alpha = 0.16f))
-                        ) { Icon(Icons.Default.Settings, "Settings", tint = Color.White) }
-                    }
-                    Spacer(Modifier.height(24.dp))
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.15f)),
-                        shape = RoundedCornerShape(24.dp)
-                    ) {
-                        Row(Modifier.fillMaxWidth().padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                Modifier.size(54.dp).clip(RoundedCornerShape(18.dp)).background(Color.White.copy(alpha = 0.18f)),
-                                contentAlignment = Alignment.Center
-                            ) { Icon(Icons.Default.Today, null, tint = Color.White) }
-                            Spacer(Modifier.width(14.dp))
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .background(Brush.linearGradient(listOf(Color(0xFF4B50DA), Color(0xFF6D5DFB), Color(0xFF6F7CF5))))
+                        .padding(20.dp)
+                ) {
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
-                                Text(now.format(DateTimeFormatter.ofPattern("EEEE, d MMM")), color = Color.White, fontWeight = FontWeight.Bold)
+                                Text(now.format(DateTimeFormatter.ofPattern("EEEE, d MMMM")), color = Color.White.copy(alpha = .78f), fontSize = 13.sp)
+                                Spacer(Modifier.height(4.dp))
                                 Text(
-                                    if (todayTasks.isEmpty()) "No timed tasks today" else "${todayTasks.size} timed task${if (todayTasks.size == 1) "" else "s"} today",
-                                    color = Color.White.copy(alpha = 0.84f)
+                                    if (todayTasks.isEmpty()) "Your day is clear" else "${todayTasks.size} things need your attention",
+                                    color = Color.White,
+                                    fontSize = 25.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    lineHeight = 30.sp
                                 )
                             }
-                            Icon(Icons.Default.ChevronRight, null, tint = Color.White)
+                            Box(
+                                Modifier.size(54.dp).clip(CircleShape).background(Color.White.copy(alpha = .14f)),
+                                contentAlignment = Alignment.Center
+                            ) { Icon(Icons.Default.AutoAwesome, null, tint = Color.White, modifier = Modifier.size(28.dp)) }
+                        }
+                        Spacer(Modifier.height(18.dp))
+                        Surface(color = Color.White.copy(alpha = .12f), shape = RoundedCornerShape(20.dp)) {
+                            Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    Modifier.size(42.dp).clip(RoundedCornerShape(13.dp)).background(Color.White.copy(alpha = .14f)),
+                                    contentAlignment = Alignment.Center
+                                ) { Icon(if (nextTask == null) Icons.Default.WbSunny else Icons.Default.Schedule, null, tint = Color.White) }
+                                Spacer(Modifier.width(12.dp))
+                                Column(Modifier.weight(1f)) {
+                                    Text(if (nextTask == null) "Nothing urgent" else "Next up", color = Color.White.copy(alpha = .72f), fontSize = 12.sp)
+                                    Text(
+                                        nextTask?.title ?: "A good moment to plan ahead",
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    nextTask?.dueAt?.let { Text(formatDue(it), color = Color.White.copy(alpha = .72f), fontSize = 12.sp) }
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(14.dp))
+                        Button(
+                            onClick = { nav.navigate(Routes.AI) },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color(0xFF4C50D7)),
+                            shape = RoundedCornerShape(16.dp),
+                            modifier = Modifier.fillMaxWidth().height(50.dp)
+                        ) {
+                            Icon(Icons.Default.AutoAwesome, null, Modifier.size(19.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Ask LifeMate", fontWeight = FontWeight.ExtraBold)
                         }
                     }
                 }
             }
+            Spacer(Modifier.height(22.dp))
         }
+
         item {
-            Column(Modifier.padding(horizontal = 18.dp)) {
-                Spacer(Modifier.height(20.dp))
-                Text("Your snapshot", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
-                Spacer(Modifier.height(12.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    MetricCard("Open", "$openTasks", Icons.Default.TaskAlt, Modifier.weight(1f))
-                    MetricCard("Habits", "$doneHabits/${viewModel.habits.size}", Icons.Default.LocalFireDepartment, Modifier.weight(1f))
-                    MetricCard("Notes", "${viewModel.notes.size}", Icons.Default.EditNote, Modifier.weight(1f))
-                }
-                Spacer(Modifier.height(22.dp))
-                Text("Quick actions", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(10.dp))
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    item { QuickAction("Ask AI", Icons.Default.AutoAwesome) { nav.navigate(Routes.AI) } }
-                    item { QuickAction("Plan day", Icons.Default.CalendarMonth) { nav.navigate(Routes.PLANNER) } }
-                    item { QuickAction("Tasks", Icons.Default.AddTask) { nav.navigate(Routes.TASKS) } }
-                    item { QuickAction("Notes", Icons.Default.StickyNote2) { nav.navigate(Routes.NOTES) } }
-                }
-                Spacer(Modifier.height(22.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Today", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, modifier = Modifier.weight(1f))
-                    TextButton(onClick = { nav.navigate(Routes.PLANNER) }) { Text("Full planner") }
-                }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Today at a glance", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, modifier = Modifier.weight(1f))
+                TextButton(onClick = { nav.navigate(Routes.PLANNER) }) { Text("Open planner") }
             }
+            Spacer(Modifier.height(8.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                PremiumMetricCard("Open", "$openTasks", Icons.Default.TaskAlt, Modifier.weight(1f))
+                PremiumMetricCard("Habits", "$doneHabits/${viewModel.habits.size}", Icons.Default.LocalFireDepartment, Modifier.weight(1f))
+                PremiumMetricCard("Notes", "${viewModel.notes.size}", Icons.Default.EditNote, Modifier.weight(1f))
+            }
+            Spacer(Modifier.height(22.dp))
+        }
+
+        item {
+            Text("Quick actions", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
+            Spacer(Modifier.height(10.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                QuickActionCard("Plan my day", "Build a simple schedule", Icons.Default.CalendarMonth, Modifier.weight(1f)) { nav.navigate(Routes.PLANNER) }
+                QuickActionCard("New task", "Capture it before you forget", Icons.Default.AddTask, Modifier.weight(1f)) { nav.navigate(Routes.TASKS) }
+            }
+            Spacer(Modifier.height(10.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                QuickActionCard("Quick note", "Save an idea", Icons.Default.StickyNote2, Modifier.weight(1f)) { nav.navigate(Routes.NOTES) }
+                QuickActionCard("Habits", "Keep your streak alive", Icons.Default.LocalFireDepartment, Modifier.weight(1f)) { nav.navigate(Routes.HABITS) }
+            }
+            Spacer(Modifier.height(22.dp))
+        }
+
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Today's tasks", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, modifier = Modifier.weight(1f))
+                if (todayTasks.isNotEmpty()) AssistChip(onClick = { nav.navigate(Routes.TASKS) }, label = { Text("${todayTasks.size} left") })
+            }
+            Spacer(Modifier.height(10.dp))
         }
         if (todayTasks.isEmpty()) {
             item {
                 EmptyCard(
                     icon = Icons.Default.WbSunny,
-                    title = "Your schedule has breathing room",
-                    body = "Add a task or ask the assistant to plan something for you.",
-                    modifier = Modifier.padding(horizontal = 18.dp)
+                    title = "No timed tasks today",
+                    body = "Enjoy the breathing room or add something important."
                 )
+                Spacer(Modifier.height(20.dp))
             }
         } else {
-            items(todayTasks.take(5), key = { it.id }) { task ->
-                TaskRow(task, onToggle = { viewModel.toggleTask(task) }, modifier = Modifier.padding(horizontal = 18.dp, vertical = 4.dp))
+            items(todayTasks.take(4), key = { it.id }) { task ->
+                TaskRow(task, onToggle = { viewModel.toggleTask(task) }, modifier = Modifier.padding(vertical = 4.dp))
             }
+            item { Spacer(Modifier.height(18.dp)) }
         }
+
         item {
-            Column(Modifier.padding(horizontal = 18.dp)) {
-                Spacer(Modifier.height(22.dp))
-                Text("Habit streaks", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
-                Spacer(Modifier.height(10.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(26.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+            ) {
+                Column(Modifier.padding(18.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Daily rhythm", color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = .7f), fontSize = 12.sp)
+                            Text("Habit progress", color = MaterialTheme.colorScheme.onSecondaryContainer, fontSize = 21.sp, fontWeight = FontWeight.ExtraBold)
+                        }
+                        Text("${(habitProgress * 100).toInt()}%", color = MaterialTheme.colorScheme.onSecondaryContainer, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    LinearProgressIndicator(
+                        progress = { habitProgress },
+                        modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape),
+                        color = MaterialTheme.colorScheme.secondary,
+                        trackColor = MaterialTheme.colorScheme.surface.copy(alpha = .55f)
+                    )
+                }
             }
+            Spacer(Modifier.height(10.dp))
         }
         items(viewModel.habits.take(3), key = { it.id }) { habit ->
-            HabitCompactRow(habit, onToggle = { viewModel.toggleHabit(habit) }, modifier = Modifier.padding(horizontal = 18.dp, vertical = 4.dp))
+            HabitCompactRow(habit, onToggle = { viewModel.toggleHabit(habit) }, modifier = Modifier.padding(vertical = 4.dp))
+        }
+        item { Spacer(Modifier.height(18.dp)) }
+    }
+}
+
+@Composable
+private fun PremiumMetricCard(label: String, value: String, icon: ImageVector, modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(Modifier.padding(14.dp)) {
+            Box(
+                Modifier.size(36.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center
+            ) { Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(19.dp)) }
+            Spacer(Modifier.height(10.dp))
+            Text(value, fontSize = 21.sp, fontWeight = FontWeight.ExtraBold)
+            Text(label, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun QuickActionCard(title: String, subtitle: String, icon: ImageVector, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Card(
+        modifier = modifier.clickable(onClick = onClick),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Box(
+                Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center
+            ) { Icon(icon, null, tint = MaterialTheme.colorScheme.primary) }
+            Spacer(Modifier.height(13.dp))
+            Text(title, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp)
+            Spacer(Modifier.height(2.dp))
+            Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, lineHeight = 15.sp, maxLines = 2)
         }
     }
 }
@@ -434,30 +630,53 @@ private fun AddTaskDialog(onDismiss: () -> Unit, onAdd: (TaskItem) -> Unit) {
 private fun AssistantScreen(viewModel: AppViewModel, onSettings: () -> Unit) {
     var input by remember { mutableStateOf("") }
     val connected = viewModel.settings.aiBackendUrl.isNotBlank()
-    Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth().padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(
+                    Brush.linearGradient(listOf(Color(0xFF4B50DA), Color(0xFF7A62F5)))
+                ),
+                contentAlignment = Alignment.Center
+            ) { Icon(Icons.Default.AutoAwesome, null, tint = Color.White) }
+            Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text("LifeMate AI", fontSize = 28.sp, fontWeight = FontWeight.ExtraBold)
-                Text(if (connected) "AI connected • local actions enabled" else "Offline assistant • AI not connected", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("LifeMate", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(7.dp).clip(CircleShape).background(if (connected) Color(0xFF20B486) else Color(0xFFFFB74D)))
+                    Spacer(Modifier.width(6.dp))
+                    Text(if (connected) "AI ready" else "Offline mode", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                }
             }
             FilledTonalIconButton(onClick = onSettings) { Icon(Icons.Default.Tune, "AI settings") }
         }
         LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("Plan my day", "What do I have today?", "Habit progress").forEach { suggestion ->
+            listOf("Plan my day", "What's next?", "Help me prioritize", "Habit progress").forEach { suggestion ->
                 item { SuggestionChip(onClick = { viewModel.sendMessage(suggestion) }, label = { Text(suggestion) }) }
             }
         }
+        Spacer(Modifier.height(8.dp))
         LazyColumn(
             modifier = Modifier.weight(1f).fillMaxWidth(),
-            contentPadding = PaddingValues(16.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             items(viewModel.chat, key = { it.id }) { msg -> ChatBubble(msg) }
             if (viewModel.assistantBusy) {
-                item { LinearProgressIndicator(Modifier.fillMaxWidth().padding(horizontal = 40.dp)) }
+                item {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                        Spacer(Modifier.width(10.dp))
+                        Text("LifeMate is thinking…", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                    }
+                }
             }
         }
-        Surface(tonalElevation = 4.dp) {
+        Surface(
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp,
+            shadowElevation = 10.dp,
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+        ) {
             Row(
                 Modifier.fillMaxWidth().padding(12.dp).imePadding(),
                 verticalAlignment = Alignment.Bottom,
@@ -466,13 +685,15 @@ private fun AssistantScreen(viewModel: AppViewModel, onSettings: () -> Unit) {
                 OutlinedTextField(
                     value = input,
                     onValueChange = { input = it },
-                    placeholder = { Text("Ask, plan, or create a reminder…") },
+                    placeholder = { Text("Ask anything about your day…") },
                     modifier = Modifier.weight(1f),
-                    maxLines = 4
+                    maxLines = 4,
+                    shape = RoundedCornerShape(20.dp)
                 )
                 FilledIconButton(
                     onClick = { val text = input; input = ""; viewModel.sendMessage(text) },
-                    enabled = input.isNotBlank() && !viewModel.assistantBusy
+                    enabled = input.isNotBlank() && !viewModel.assistantBusy,
+                    modifier = Modifier.size(52.dp)
                 ) { Icon(Icons.Default.ArrowUpward, "Send") }
             }
         }
@@ -756,8 +977,9 @@ private fun SettingsScreen(viewModel: AppViewModel, onBack: () -> Unit) {
 
 @Composable
 private fun ScreenTitle(title: String, subtitle: String) {
-    Text(title, fontSize = 30.sp, fontWeight = FontWeight.ExtraBold)
-    Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Text(title, fontSize = 31.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.5).sp)
+    Spacer(Modifier.height(3.dp))
+    Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 20.sp)
 }
 
 @Composable
