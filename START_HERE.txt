@@ -1,31 +1,38 @@
-LIFEMATE AI — PREMIUM V3 START HERE
+LIFEMATE AI — PREMIUM V4 START HERE
 ===================================
 
-GITHUB / APK
-------------
-1) Extract this ZIP.
-2) Upload everything INSIDE this folder to the ROOT of your existing GitHub repository, replacing the old V2 files.
-3) GitHub > Actions > Build Android APK and AAB > Run workflow.
-4) When it turns green, download Artifacts > LifeMateAI-debug-APK.
-5) Extract and install the APK on Android.
+YOU ALREADY HAVE THE GITHUB REPO
+--------------------------------
+1) Extract this V4 ZIP.
+2) Open the extracted folder.
+3) Upload/replace everything INSIDE it in the ROOT of your existing GitHub repository.
+4) Commit the changes.
+5) GitHub > Actions > Build Android APK and AAB > Run workflow.
+6) Wait for the green tick.
+7) Download Artifacts > LifeMateAI-debug-APK.
+8) Extract the artifact ZIP and install the APK on your Android phone.
 
-WHAT IS FIXED IN V3
--------------------
-- Home quick buttons now perform the expected action.
-- New Task opens the task form directly.
-- Quick Note opens the note form directly.
-- Dashboard metric cards open their matching sections.
-- AI screen has connection status, retry, clear-chat and better prompt buttons.
-- Settings has Test AI Connection.
+WHAT V4 ADDS
+------------
+- Exact date picker + time picker
+- Daily / weekly / monthly repeating tasks
+- Better 7-day planner
+- Voice button in AI chat
+- AI can create tasks and notes when asked
+- Premium splash screen
+- Better reminder/repeat indicators
 
 REAL AI
 -------
-A secure OpenAI backend is INCLUDED in backend/cloudflare-worker/.
-Do NOT put an OpenAI API key inside the Android app.
+The Android AI code and secure Cloudflare Worker are included.
+The OpenAI API key MUST stay on the backend, never inside the app.
 
-Read AI_SETUP_EASY.md when you are ready to switch on real AI.
-Until then the offline assistant still supports task/reminder commands.
+Read: AI_SETUP_EASY.md
+
+If AI is not connected yet, the app still works for local tasks, notes, habits,
+planner, reminders and basic offline assistant commands.
 
 PLAY STORE
 ----------
-The normal release AAB from the basic build may be unsigned. Use the signed-release workflow only after your Play Store signing key has been configured safely.
+The normal build workflow produces a debug APK and an unsigned release AAB.
+Use docs/PLAY_STORE_SIGNING.md before your final Play Store release.

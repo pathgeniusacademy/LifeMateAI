@@ -10,6 +10,7 @@ data class TaskItem(
     val priority: String = "MEDIUM",
     val completed: Boolean = false,
     val reminderEnabled: Boolean = false,
+    val repeat: String = "NONE",
     val createdAt: Long = System.currentTimeMillis()
 )
 

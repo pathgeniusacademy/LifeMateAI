@@ -1,6 +1,12 @@
 package com.pathgeniusacademy.lifemate.ui
 
+import android.app.Activity
+import android.app.DatePickerDialog
+import android.app.TimePickerDialog
+import android.content.Intent
+import android.speech.RecognizerIntent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -9,11 +15,14 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -596,67 +605,196 @@ private fun TasksScreen(viewModel: AppViewModel) {
 
 @Composable
 private fun AddTaskDialog(onDismiss: () -> Unit, onAdd: (TaskItem) -> Unit) {
+    val context = LocalContext.current
+    val initial = remember { LocalDateTime.now().withSecond(0).withNano(0).plusHours(1) }
     var title by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
     var priority by remember { mutableStateOf("MEDIUM") }
-    var dueChoice by remember { mutableStateOf("TODAY") }
+    var selectedDate by remember { mutableStateOf(initial.toLocalDate()) }
+    var selectedTime by remember { mutableStateOf(initial.toLocalTime()) }
+    var hasDueDate by remember { mutableStateOf(true) }
     var reminder by remember { mutableStateOf(true) }
+    var repeat by remember { mutableStateOf("NONE") }
+
+    fun openDatePicker() {
+        DatePickerDialog(
+            context,
+            { _, year, month, day -> selectedDate = LocalDate.of(year, month + 1, day) },
+            selectedDate.year,
+            selectedDate.monthValue - 1,
+            selectedDate.dayOfMonth
+        ).apply { datePicker.minDate = System.currentTimeMillis() - 86_400_000L }.show()
+    }
+
+    fun openTimePicker() {
+        TimePickerDialog(
+            context,
+            { _, hour, minute -> selectedTime = LocalTime.of(hour, minute) },
+            selectedTime.hour,
+            selectedTime.minute,
+            false
+        ).show()
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("New task") },
+        title = {
+            Column {
+                Text("Create task", fontWeight = FontWeight.ExtraBold)
+                Text("Add it once. Let LifeMate remember it.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(title, { title = it }, label = { Text("What needs to be done?") }, singleLine = true)
-                OutlinedTextField(notes, { notes = it }, label = { Text("Note (optional)") }, minLines = 2, maxLines = 3)
-                Text("Priority", fontWeight = FontWeight.SemiBold)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf("LOW", "MEDIUM", "HIGH").forEach { p ->
-                        FilterChip(selected = priority == p, onClick = { priority = p }, label = { Text(p.lowercase().replaceFirstChar { it.uppercase() }) })
-                    }
-                }
-                Text("Due", fontWeight = FontWeight.SemiBold)
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf("TODAY", "TOMORROW", "NONE").forEach { d ->
-                        FilterChip(selected = dueChoice == d, onClick = { dueChoice = d }, label = { Text(d.lowercase().replaceFirstChar { it.uppercase() }) })
-                    }
-                }
-                AnimatedVisibility(dueChoice != "NONE") {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Local reminder", modifier = Modifier.weight(1f))
-                        Switch(checked = reminder, onCheckedChange = { reminder = it })
-                    }
-                }
-                Text(
-                    "Tip: for an exact custom time, tell the assistant: “Remind me to call Sam tomorrow at 6 pm”.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+            Column(
+                modifier = Modifier.fillMaxWidth().animateContentSize(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedTextField(
+                    value = title,
+                    onValueChange = { title = it.take(160) },
+                    label = { Text("What needs to be done?") },
+                    leadingIcon = { Icon(Icons.Default.TaskAlt, null) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp)
                 )
+                OutlinedTextField(
+                    value = notes,
+                    onValueChange = { notes = it.take(1000) },
+                    label = { Text("Details (optional)") },
+                    minLines = 2, maxLines = 3,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp)
+                )
+
+                Text("Priority", fontWeight = FontWeight.SemiBold)
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    items(listOf("LOW", "MEDIUM", "HIGH")) { p ->
+                        FilterChip(
+                            selected = priority == p,
+                            onClick = { priority = p },
+                            label = { Text(p.lowercase().replaceFirstChar { it.uppercase() }) },
+                            leadingIcon = if (priority == p) { { Icon(Icons.Default.Check, null, Modifier.size(17.dp)) } } else null
+                        )
+                    }
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Schedule", fontWeight = FontWeight.SemiBold)
+                        Text("Choose an exact date and time", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Switch(checked = hasDueDate, onCheckedChange = { hasDueDate = it; if (!it) reminder = false })
+                }
+
+                AnimatedVisibility(hasDueDate) {
+                    Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(
+                                onClick = { openDatePicker() },
+                                modifier = Modifier.weight(1f).height(48.dp),
+                                shape = RoundedCornerShape(14.dp)
+                            ) {
+                                Icon(Icons.Default.CalendarMonth, null, Modifier.size(18.dp))
+                                Spacer(Modifier.width(7.dp))
+                                Text(selectedDate.format(DateTimeFormatter.ofPattern("d MMM yyyy")))
+                            }
+                            OutlinedButton(
+                                onClick = { openTimePicker() },
+                                modifier = Modifier.weight(1f).height(48.dp),
+                                shape = RoundedCornerShape(14.dp)
+                            ) {
+                                Icon(Icons.Default.Schedule, null, Modifier.size(18.dp))
+                                Spacer(Modifier.width(7.dp))
+                                Text(selectedTime.format(DateTimeFormatter.ofPattern("h:mm a")))
+                            }
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.NotificationsActive, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Notify me", modifier = Modifier.weight(1f))
+                            Switch(checked = reminder, onCheckedChange = { reminder = it })
+                        }
+                    }
+                }
+
+                Text("Repeat", fontWeight = FontWeight.SemiBold)
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                    items(listOf("NONE", "DAILY", "WEEKLY", "MONTHLY")) { r ->
+                        FilterChip(
+                            selected = repeat == r,
+                            onClick = { repeat = r; if (r != "NONE") hasDueDate = true },
+                            label = { Text(if (r == "NONE") "Never" else r.lowercase().replaceFirstChar { it.uppercase() }) }
+                        )
+                    }
+                }
+                if (repeat != "NONE") {
+                    Text("When you complete it, the next $repeat occurrence is scheduled automatically.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
         },
         confirmButton = {
-            Button(onClick = {
-                val due = when (dueChoice) {
-                    "TODAY" -> LocalDate.now().atTime(18, 0).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
-                    "TOMORROW" -> LocalDate.now().plusDays(1).atTime(9, 0).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
-                    else -> null
-                }
-                onAdd(TaskItem(title = title.trim(), notes = notes.trim(), dueAt = due, priority = priority, reminderEnabled = reminder && due != null))
-            }, enabled = title.isNotBlank()) { Text("Add") }
+            Button(
+                onClick = {
+                    val due = if (hasDueDate) {
+                        ZonedDateTime.of(selectedDate, selectedTime, ZoneId.systemDefault()).toInstant().toEpochMilli()
+                    } else null
+                    onAdd(
+                        TaskItem(
+                            title = title.trim(),
+                            notes = notes.trim(),
+                            dueAt = due,
+                            priority = priority,
+                            reminderEnabled = reminder && due != null,
+                            repeat = if (due != null) repeat else "NONE"
+                        )
+                    )
+                },
+                enabled = title.isNotBlank(),
+                shape = RoundedCornerShape(14.dp)
+            ) {
+                Icon(Icons.Default.AddTask, null, Modifier.size(18.dp))
+                Spacer(Modifier.width(7.dp))
+                Text("Add task", fontWeight = FontWeight.Bold)
+            }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+        shape = RoundedCornerShape(26.dp)
     )
 }
 
 @Composable
 private fun AssistantScreen(viewModel: AppViewModel, onSettings: () -> Unit) {
     var input by remember { mutableStateOf("") }
+    var voiceStatus by remember { mutableStateOf<String?>(null) }
     val connected = viewModel.settings.aiBackendUrl.isNotBlank()
+    val context = LocalContext.current
+
+    val voiceLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val spoken = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull().orEmpty()
+            if (spoken.isNotBlank()) {
+                input = spoken
+                voiceStatus = "Voice captured"
+            }
+        } else {
+            voiceStatus = "Voice input cancelled"
+        }
+    }
+
+    fun startVoiceInput() {
+        runCatching {
+            val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                putExtra(RecognizerIntent.EXTRA_PROMPT, "Tell LifeMate what you need")
+                putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
+            }
+            voiceLauncher.launch(intent)
+        }.onFailure { voiceStatus = "Voice input is not available on this device" }
+    }
 
     LaunchedEffect(viewModel.settings.aiBackendUrl) {
-        if (connected && viewModel.aiConnectionState == "UNKNOWN") {
-            viewModel.testAiConnection()
-        }
+        if (connected && viewModel.aiConnectionState == "UNKNOWN") viewModel.testAiConnection()
     }
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
@@ -665,13 +803,11 @@ private fun AssistantScreen(viewModel: AppViewModel, onSettings: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
-                Modifier.size(50.dp).clip(RoundedCornerShape(17.dp)).background(
+                Modifier.size(52.dp).clip(RoundedCornerShape(18.dp)).background(
                     Brush.linearGradient(listOf(Color(0xFF4B50DA), Color(0xFF7A62F5)))
                 ),
                 contentAlignment = Alignment.Center
-            ) {
-                Icon(Icons.Default.AutoAwesome, null, tint = Color.White, modifier = Modifier.size(26.dp))
-            }
+            ) { Icon(Icons.Default.AutoAwesome, null, tint = Color.White, modifier = Modifier.size(27.dp)) }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text("LifeMate AI", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
@@ -686,21 +822,16 @@ private fun AssistantScreen(viewModel: AppViewModel, onSettings: () -> Unit) {
                     Text(
                         when {
                             !connected -> "Offline assistant"
-                            viewModel.aiConnectionState == "CONNECTED" -> "AI connected"
+                            viewModel.aiConnectionState == "CONNECTED" -> "AI connected • actions enabled"
                             viewModel.aiConnectionState == "TESTING" -> "Connecting…"
                             else -> "AI needs attention"
                         },
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 12.sp
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp
                     )
                 }
             }
-            IconButton(onClick = { viewModel.clearChat() }) {
-                Icon(Icons.Default.Refresh, "Clear conversation")
-            }
-            FilledTonalIconButton(onClick = onSettings) {
-                Icon(Icons.Default.Tune, "AI settings")
-            }
+            IconButton(onClick = { viewModel.clearChat() }) { Icon(Icons.Default.Refresh, "Clear conversation") }
+            FilledTonalIconButton(onClick = onSettings) { Icon(Icons.Default.Tune, "AI settings") }
         }
 
         if (!connected) {
@@ -709,24 +840,14 @@ private fun AssistantScreen(viewModel: AppViewModel, onSettings: () -> Unit) {
                 shape = RoundedCornerShape(22.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
             ) {
-                Row(
-                    Modifier.fillMaxWidth().padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.surface.copy(alpha = .75f)),
-                        contentAlignment = Alignment.Center
-                    ) {
+                Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.surface.copy(alpha = .75f)), contentAlignment = Alignment.Center) {
                         Icon(Icons.Default.CloudOff, null, tint = MaterialTheme.colorScheme.primary)
                     }
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("Smart offline mode is active", fontWeight = FontWeight.ExtraBold)
-                        Text(
-                            "Tasks and reminders work now. Connect the secure AI backend for open-ended planning and writing help.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Text("Offline assistant is ready", fontWeight = FontWeight.ExtraBold)
+                        Text("Natural reminders and basic planning work now. Connect AI for writing, prioritization and smarter task creation.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Spacer(Modifier.width(8.dp))
                     FilledTonalButton(onClick = onSettings) { Text("Connect") }
@@ -753,17 +874,12 @@ private fun AssistantScreen(viewModel: AppViewModel, onSettings: () -> Unit) {
         ) {
             listOf(
                 "Plan my day",
+                "Add a high priority task for tomorrow",
                 "What should I do next?",
-                "Help me prioritize",
-                "Summarize my tasks",
-                "Write a quick message"
+                "Turn this idea into a note",
+                "Help me prioritize"
             ).forEach { suggestion ->
-                item {
-                    SuggestionChip(
-                        onClick = { viewModel.sendMessage(suggestion) },
-                        label = { Text(suggestion) }
-                    )
-                }
+                item { SuggestionChip(onClick = { input = suggestion }, label = { Text(suggestion) }) }
             }
         }
 
@@ -775,19 +891,24 @@ private fun AssistantScreen(viewModel: AppViewModel, onSettings: () -> Unit) {
             items(viewModel.chat, key = { it.id }) { msg -> ChatBubble(msg) }
             if (viewModel.assistantBusy) {
                 item {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 4.dp)) {
-                        CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                        Spacer(Modifier.width(10.dp))
-                        Text("LifeMate is thinking…", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                    Card(shape = RoundedCornerShape(18.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                        Row(Modifier.padding(horizontal = 14.dp, vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
+                            CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                            Spacer(Modifier.width(10.dp))
+                            Text("Thinking and checking your day…", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                        }
                     }
                 }
             }
         }
 
+        voiceStatus?.let { status ->
+            Text(status, modifier = Modifier.padding(horizontal = 18.dp, vertical = 3.dp), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+
         Surface(
             color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 6.dp,
-            shadowElevation = 10.dp,
+            tonalElevation = 6.dp, shadowElevation = 10.dp,
             shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
         ) {
             Row(
@@ -795,26 +916,27 @@ private fun AssistantScreen(viewModel: AppViewModel, onSettings: () -> Unit) {
                 verticalAlignment = Alignment.Bottom,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                FilledTonalIconButton(
+                    onClick = { startVoiceInput() },
+                    modifier = Modifier.size(52.dp),
+                    shape = RoundedCornerShape(17.dp)
+                ) { Icon(Icons.Default.Mic, "Voice input") }
                 OutlinedTextField(
-                    value = input,
-                    onValueChange = { input = it },
-                    placeholder = { Text(if (connected) "Ask LifeMate anything…" else "Try: Remind me tomorrow at 6 pm…") },
-                    modifier = Modifier.weight(1f),
-                    maxLines = 4,
+                    value = input, onValueChange = { input = it },
+                    placeholder = { Text(if (connected) "Ask, plan, create…" else "Try: Remind me tomorrow at 6 pm…") },
+                    modifier = Modifier.weight(1f), maxLines = 4,
                     shape = RoundedCornerShape(20.dp)
                 )
                 FilledIconButton(
                     onClick = {
                         val text = input
                         input = ""
+                        voiceStatus = null
                         viewModel.sendMessage(text)
                     },
                     enabled = input.isNotBlank() && !viewModel.assistantBusy,
-                    modifier = Modifier.size(54.dp),
-                    shape = RoundedCornerShape(18.dp)
-                ) {
-                    Icon(Icons.Default.ArrowUpward, "Send")
-                }
+                    modifier = Modifier.size(54.dp), shape = RoundedCornerShape(18.dp)
+                ) { Icon(Icons.Default.ArrowUpward, "Send") }
             }
         }
     }
@@ -990,18 +1112,67 @@ private fun HabitsScreen(viewModel: AppViewModel) {
 
 @Composable
 private fun PlannerScreen(viewModel: AppViewModel, onBack: () -> Unit) {
-    val open = viewModel.tasks.filter { !it.completed }
+    var selectedDate by remember { mutableStateOf(LocalDate.now()) }
+    var showAdd by remember { mutableStateOf(false) }
+    val open = viewModel.tasks.filter { !it.completed && taskDate(it.dueAt) == selectedDate }
     val morning = open.filter { hourOf(it.dueAt) in 0..11 }.sortedBy { it.dueAt }
     val afternoon = open.filter { hourOf(it.dueAt) in 12..16 }.sortedBy { it.dueAt }
     val evening = open.filter { hourOf(it.dueAt) in 17..23 }.sortedBy { it.dueAt }
-    val unscheduled = open.filter { it.dueAt == null }
+    val unscheduled = if (selectedDate == LocalDate.now()) viewModel.tasks.filter { !it.completed && it.dueAt == null } else emptyList()
+    val week = remember(selectedDate) { (-3L..3L).map { selectedDate.plusDays(it) } }
 
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(18.dp, 10.dp, 18.dp, 30.dp)) {
-        item { BackHeader("Daily planner", onBack); Text(LocalDate.now().format(DateTimeFormatter.ofPattern("EEEE, d MMMM")), color = MaterialTheme.colorScheme.onSurfaceVariant); Spacer(Modifier.height(18.dp)) }
-        item { PlannerSection("Morning", "☀️", morning, viewModel); Spacer(Modifier.height(14.dp)) }
-        item { PlannerSection("Afternoon", "🌤️", afternoon, viewModel); Spacer(Modifier.height(14.dp)) }
-        item { PlannerSection("Evening", "🌙", evening, viewModel); Spacer(Modifier.height(14.dp)) }
-        item { PlannerSection("Unscheduled", "📥", unscheduled, viewModel) }
+    Scaffold(
+        floatingActionButton = {
+            ExtendedFloatingActionButton(
+                onClick = { showAdd = true },
+                icon = { Icon(Icons.Default.Add, null) },
+                text = { Text("Add task") }
+            )
+        }
+    ) { padding ->
+        LazyColumn(
+            Modifier.fillMaxSize().padding(padding),
+            contentPadding = PaddingValues(18.dp, 10.dp, 18.dp, 110.dp)
+        ) {
+            item {
+                BackHeader("Daily planner", onBack)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(selectedDate.format(DateTimeFormatter.ofPattern("EEEE, d MMMM")), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(if (open.isEmpty()) "A lighter day" else "${open.size} scheduled task${if (open.size == 1) "" else "s"}", fontWeight = FontWeight.Bold)
+                    }
+                    if (selectedDate != LocalDate.now()) TextButton(onClick = { selectedDate = LocalDate.now() }) { Text("Today") }
+                }
+                Spacer(Modifier.height(14.dp))
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(week) { day ->
+                        val selected = day == selectedDate
+                        Card(
+                            onClick = { selectedDate = day },
+                            shape = RoundedCornerShape(18.dp),
+                            colors = CardDefaults.cardColors(containerColor = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant)
+                        ) {
+                            Column(Modifier.width(58.dp).padding(vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(day.format(DateTimeFormatter.ofPattern("EEE")), fontSize = 11.sp, color = if (selected) MaterialTheme.colorScheme.onPrimary.copy(alpha = .8f) else MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(day.dayOfMonth.toString(), fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface)
+                            }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(20.dp))
+            }
+            item { PlannerSection("Morning", "☀️", morning, viewModel); Spacer(Modifier.height(14.dp)) }
+            item { PlannerSection("Afternoon", "🌤️", afternoon, viewModel); Spacer(Modifier.height(14.dp)) }
+            item { PlannerSection("Evening", "🌙", evening, viewModel); Spacer(Modifier.height(14.dp)) }
+            if (selectedDate == LocalDate.now()) item { PlannerSection("Unscheduled", "📥", unscheduled, viewModel) }
+        }
+    }
+
+    if (showAdd) {
+        AddTaskDialog(
+            onDismiss = { showAdd = false },
+            onAdd = { viewModel.addTask(it); showAdd = false }
+        )
     }
 }
 
@@ -1018,6 +1189,7 @@ private fun PlannerSection(title: String, emoji: String, tasks: List<TaskItem>, 
                     Column(Modifier.weight(1f)) {
                         Text(task.title, fontWeight = FontWeight.Medium)
                         task.dueAt?.let { Text(formatTime(it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                        if (task.repeat != "NONE") Text("Repeats ${task.repeat.lowercase()}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
                     }
                 }
             }
@@ -1156,6 +1328,13 @@ private fun TaskRow(task: TaskItem, onToggle: () -> Unit, onDelete: (() -> Unit)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     task.dueAt?.let { Text(formatDue(it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                     if (task.priority == "HIGH") Text("High", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                    if (task.repeat != "NONE") {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Repeat, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
+                            Spacer(Modifier.width(3.dp))
+                            Text(task.repeat.lowercase().replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                        }
+                    }
                     if (task.reminderEnabled && !task.completed) Icon(Icons.Default.NotificationsActive, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(15.dp))
                 }
             }
@@ -1190,6 +1369,10 @@ private fun EmptyCard(icon: ImageVector, title: String, body: String, modifier: 
             Text(body, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
         }
     }
+}
+
+private fun taskDate(ms: Long?): LocalDate? = ms?.let {
+    Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate()
 }
 
 private fun isToday(ms: Long?): Boolean {

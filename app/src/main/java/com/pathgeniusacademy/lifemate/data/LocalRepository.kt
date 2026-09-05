@@ -21,6 +21,7 @@ class LocalRepository(context: Context) {
                     priority = o.optString("priority", "MEDIUM"),
                     completed = o.optBoolean("completed", false),
                     reminderEnabled = o.optBoolean("reminderEnabled", false),
+                    repeat = o.optString("repeat", "NONE"),
                     createdAt = o.optLong("createdAt", System.currentTimeMillis())
                 ))
             }
@@ -34,7 +35,7 @@ class LocalRepository(context: Context) {
                 put("id", t.id); put("title", t.title); put("notes", t.notes)
                 put("dueAt", t.dueAt ?: JSONObject.NULL); put("priority", t.priority)
                 put("completed", t.completed); put("reminderEnabled", t.reminderEnabled)
-                put("createdAt", t.createdAt)
+                put("repeat", t.repeat); put("createdAt", t.createdAt)
             })
         }
         prefs.edit().putString(KEY_TASKS, arr.toString()).apply()

@@ -1,44 +1,58 @@
-# LifeMate AI — Premium V3
+# LifeMate AI — Premium V4
 
-LifeMate AI is a native Android daily-life organizer built with Kotlin + Jetpack Compose. V3 focuses on a polished, easy UI and a real secure AI connection without placing an API key inside the APK.
+LifeMate AI is a native Android daily-life assistant built with Kotlin + Jetpack Compose. V4 focuses on making the app feel much closer to a real premium productivity assistant while keeping the UI simple.
 
-## What is improved in V3
-- Premium home dashboard with larger, consistent tap targets
-- Home metric cards are now actionable
-- **New task** opens task creation immediately
-- **Quick note** opens note creation immediately
-- Cleaner AI chat screen with connection state, retry, clear conversation and prompt chips
-- AI receives useful app context such as open tasks, habits and recent notes
-- Settings includes a **Test AI connection** button and clear connection status
-- Optional build-time `AI_BACKEND_URL` support through a GitHub Actions secret
-- Offline assistant still works when AI is unavailable
-- Version updated to 3.0.0
+## What is new in V4
+- Exact **date + time picker** for tasks
+- **Daily / weekly / monthly recurring tasks**
+- Recurring tasks automatically move to their next occurrence when completed
+- Upgraded **7-day planner strip** with date switching
+- **Voice input** in the AI screen through the device speech recognizer
+- AI can now create tasks and notes when the user clearly asks it to
+- AI receives current time, timezone, open tasks, habits and recent notes as context
+- Secure AI actions are returned from the backend and applied by the Android app
+- Better AI prompt chips and loading state
+- Premium Android splash screen
+- Improved repeat/reminder indicators in task cards
+- Version updated to **4.0.0**
 
 ## Core features
-- Tasks with priority, due presets, completion and local reminders
+- Tasks with priority, notes, exact schedule and local reminder
+- Repeating tasks: daily, weekly, monthly
 - Daily planner grouped into morning / afternoon / evening
 - Notes with search, edit, pin and delete
 - Habits with daily completion and streaks
 - Offline assistant commands
-- Secure AI chat through your own HTTPS backend
+- Secure OpenAI-powered assistant through your own HTTPS backend
+- AI task/note creation
+- Voice-to-text input where a speech recognition service is available on the device
 - Light / dark / system themes
 - Local-first storage
 - GitHub Actions for APK and AAB
 
-## Offline assistant examples
+## Example commands
+### Offline
 - `Add task buy groceries`
 - `What do I have today?`
 - `Plan my day`
-- `Habit progress`
 - `Remind me to call Sam tomorrow at 6 pm`
 - `Kal 7 pm baje assignment submit karna yaad dilana`
+
+### With AI connected
+- `Add a high priority task to submit the report tomorrow at 5 pm`
+- `Remind me every week on Monday to review my goals`
+- `Save this idea as a note: ...`
+- `Look at my open tasks and tell me what I should do next`
+- `Plan a realistic day from my current tasks`
 
 ## AI architecture
 Android app → your HTTPS Cloudflare Worker → OpenAI Responses API.
 
-The Android app never contains the OpenAI API key. The backend starter is in `backend/cloudflare-worker/`.
+The OpenAI API key is never packaged inside the APK/AAB. The included backend is in:
 
-The backend defaults to `gpt-5.6-luna`, which is suitable for a cost-sensitive everyday assistant. You can change `OPENAI_MODEL` later.
+`backend/cloudflare-worker/`
+
+The backend defaults to `gpt-5.6-luna` for a cost-sensitive daily assistant. The model can be changed through the backend environment configuration.
 
 ## GitHub build
 The included workflow uses JDK 17 and Gradle 8.13 and builds:
@@ -50,14 +64,14 @@ gradle :app:bundleRelease
 
 The project uses Android Gradle Plugin 8.11.1 and targets Android API 36.
 
-## Optional: bake the backend URL into builds
-After your backend is deployed, add a GitHub repository secret named:
+## Optional: connect AI automatically in GitHub builds
+After deploying your backend, add this GitHub Actions repository secret:
 
 `AI_BACKEND_URL`
 
-with the Worker HTTPS URL. Future APK/AAB builds will start with that backend already configured. The user can still change it in Settings.
+Set its value to your HTTPS Worker URL. New APK/AAB builds will start with that URL already configured.
 
 ## Security
-Never commit or place `OPENAI_API_KEY` inside the Android app, Gradle files, GitHub source, or APK. Keep it only as a server-side secret.
+Never put `OPENAI_API_KEY` inside Android source code, Gradle files, GitHub source, or the APK.
 
-Before a public launch, add backend authentication, rate limiting and abuse controls so unknown users cannot consume your API budget.
+For a public launch, add backend authentication, rate limiting and abuse protection before giving the app to a large number of users.

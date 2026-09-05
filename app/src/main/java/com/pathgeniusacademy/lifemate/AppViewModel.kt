@@ -11,6 +11,8 @@ import com.pathgeniusacademy.lifemate.model.*
 import com.pathgeniusacademy.lifemate.notifications.ReminderScheduler
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.Instant
+import java.time.ZoneId
 
 class AppViewModel(application: Application) : AndroidViewModel(application) {
     private val repo = LocalRepository(application)
@@ -111,6 +113,17 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun toggleTask(task: TaskItem) {
         val index = _tasks.indexOfFirst { it.id == task.id }
         if (index < 0) return
+
+        if (!task.completed && task.repeat != "NONE") {
+            val nextDue = nextRecurringDue(task.dueAt, task.repeat)
+            val updated = task.copy(completed = false, dueAt = nextDue)
+            _tasks[index] = updated
+            persistTasks()
+            ReminderScheduler.cancel(appContext, updated.id)
+            if (settings.notificationsEnabled) ReminderScheduler.schedule(appContext, updated)
+            return
+        }
+
         val updated = task.copy(completed = !task.completed)
         _tasks[index] = updated
         persistTasks()
@@ -196,13 +209,51 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         assistantBusy = true
         viewModelScope.launch {
             val result = AiClient.send(settings.aiBackendUrl, clean, previousHistory, _tasks, _habits, _notes)
-            _chat.add(ChatMessage(
-                role = "assistant",
-                text = result.getOrElse { "I couldn’t reach the AI service just now. Your offline tasks, notes, habits and reminders are still available." }
-            ))
+            result.onSuccess { ai ->
+                ai.actions.forEach { action ->
+                    when (action.type) {
+                        "create_task" -> if (action.title.isNotBlank()) {
+                            addTask(
+                                TaskItem(
+                                    title = action.title,
+                                    notes = action.notes,
+                                    dueAt = action.dueAt,
+                                    priority = action.priority,
+                                    reminderEnabled = action.reminderEnabled && action.dueAt != null,
+                                    repeat = action.repeat
+                                )
+                            )
+                        }
+                        "create_note" -> if (action.title.isNotBlank() || action.body.isNotBlank()) {
+                            addNote(action.title.ifBlank { "AI note" }, action.body)
+                        }
+                    }
+                }
+                _chat.add(ChatMessage(role = "assistant", text = ai.reply))
+            }.onFailure {
+                _chat.add(ChatMessage(
+                    role = "assistant",
+                    text = "I couldn’t reach the AI service just now. Your offline tasks, notes, habits and reminders are still available."
+                ))
+            }
             repo.saveChat(_chat)
             assistantBusy = false
         }
+    }
+
+    private fun nextRecurringDue(current: Long?, repeat: String): Long? {
+        var next = current?.let { Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()) }
+            ?: java.time.ZonedDateTime.now().plusHours(1)
+        val now = java.time.ZonedDateTime.now()
+        do {
+            next = when (repeat) {
+                "DAILY" -> next.plusDays(1)
+                "WEEKLY" -> next.plusWeeks(1)
+                "MONTHLY" -> next.plusMonths(1)
+                else -> next
+            }
+        } while (repeat != "NONE" && !next.isAfter(now))
+        return next.toInstant().toEpochMilli()
     }
 
     private fun persistTasks() = repo.saveTasks(_tasks)
