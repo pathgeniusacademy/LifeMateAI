@@ -1,0 +1,25 @@
+LIFEMATE AI — V1 START HERE
+============================
+
+You do NOT need Android Studio to get the first APK.
+
+1) Extract this ZIP.
+2) Create a new GitHub repository.
+3) Upload everything INSIDE this folder to the ROOT of the repository.
+   You should see: app, backend, .github, build.gradle.kts, settings.gradle.kts.
+4) Open GitHub > Actions > "Build Android APK and AAB".
+5) Press "Run workflow" (or wait for the automatic build after upload).
+6) When it turns green, open the run > Artifacts > LifeMateAI-debug-APK.
+7) Download the artifact ZIP, extract it, and install the APK on Android.
+
+IMPORTANT ABOUT AI
+------------------
+The app works offline for tasks, notes, habits, planner, reminders, and offline assistant commands.
+Open-ended AI chat is OFF by default because an API key must NEVER be put inside an APK.
+The secure backend starter is included in backend/cloudflare-worker/.
+We can connect/deploy that after you test the app UI and offline features.
+
+PLAY STORE
+----------
+Do not upload the unsigned AAB to Play Store yet.
+The project includes a separate signed-release GitHub workflow. We will create your signing key safely when the app is ready.
