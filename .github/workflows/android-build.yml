@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      AI_BACKEND_URL: ${{ secrets.AI_BACKEND_URL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4

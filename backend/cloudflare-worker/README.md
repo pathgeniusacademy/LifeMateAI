@@ -1,14 +1,17 @@
 # LifeMate AI secure backend
 
-This backend keeps the OpenAI API key on the server. Never put the API key inside the Android app or GitHub source.
+This is the secure AI bridge used by the Android app. The OpenAI API key stays on the server and is never packaged inside the APK/AAB.
 
-## Deploy outline
-1. Create a Cloudflare Worker project from this folder.
-2. Copy `wrangler.toml.example` to `wrangler.toml`.
-3. Add the API key as a secret: `npx wrangler secret put OPENAI_API_KEY`.
-4. Deploy with `npm run deploy`.
-5. Copy the resulting HTTPS Worker URL into LifeMate AI > Settings > Backend URL.
+## Fast setup
+1. Create a Cloudflare account and install Node.js on your PC once.
+2. Open this `backend/cloudflare-worker` folder in a terminal.
+3. Run `npm install`.
+4. Run `npx wrangler login`.
+5. Copy `wrangler.toml.example` to `wrangler.toml`.
+6. Run `npx wrangler secret put OPENAI_API_KEY` and paste your OpenAI API key when prompted.
+7. Run `npm run deploy`.
+8. Wrangler prints an HTTPS Worker URL. Put that URL in **LifeMate AI > Settings > AI connection** and tap **Test connection**.
 
-For a public launch, add authentication and rate limiting so strangers cannot use your backend at your expense.
+The default model is `gpt-5.6-luna` for a cost-sensitive assistant. Change `OPENAI_MODEL` in `wrangler.toml` if desired.
 
-The Worker sends `store: false` with Responses API requests and returns only the assistant reply to the Android app.
+For a public production launch, add authentication, abuse protection and rate limiting so unknown users cannot spend your API budget.

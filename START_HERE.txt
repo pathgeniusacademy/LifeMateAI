@@ -1,25 +1,31 @@
-LIFEMATE AI — V1 START HERE
-============================
+LIFEMATE AI — PREMIUM V3 START HERE
+===================================
 
-You do NOT need Android Studio to get the first APK.
-
+GITHUB / APK
+------------
 1) Extract this ZIP.
-2) Create a new GitHub repository.
-3) Upload everything INSIDE this folder to the ROOT of the repository.
-   You should see: app, backend, .github, build.gradle.kts, settings.gradle.kts.
-4) Open GitHub > Actions > "Build Android APK and AAB".
-5) Press "Run workflow" (or wait for the automatic build after upload).
-6) When it turns green, open the run > Artifacts > LifeMateAI-debug-APK.
-7) Download the artifact ZIP, extract it, and install the APK on Android.
+2) Upload everything INSIDE this folder to the ROOT of your existing GitHub repository, replacing the old V2 files.
+3) GitHub > Actions > Build Android APK and AAB > Run workflow.
+4) When it turns green, download Artifacts > LifeMateAI-debug-APK.
+5) Extract and install the APK on Android.
 
-IMPORTANT ABOUT AI
-------------------
-The app works offline for tasks, notes, habits, planner, reminders, and offline assistant commands.
-Open-ended AI chat is OFF by default because an API key must NEVER be put inside an APK.
-The secure backend starter is included in backend/cloudflare-worker/.
-We can connect/deploy that after you test the app UI and offline features.
+WHAT IS FIXED IN V3
+-------------------
+- Home quick buttons now perform the expected action.
+- New Task opens the task form directly.
+- Quick Note opens the note form directly.
+- Dashboard metric cards open their matching sections.
+- AI screen has connection status, retry, clear-chat and better prompt buttons.
+- Settings has Test AI Connection.
+
+REAL AI
+-------
+A secure OpenAI backend is INCLUDED in backend/cloudflare-worker/.
+Do NOT put an OpenAI API key inside the Android app.
+
+Read AI_SETUP_EASY.md when you are ready to switch on real AI.
+Until then the offline assistant still supports task/reminder commands.
 
 PLAY STORE
 ----------
-Do not upload the unsigned AAB to Play Store yet.
-The project includes a separate signed-release GitHub workflow. We will create your signing key safely when the app is ready.
+The normal release AAB from the basic build may be unsigned. Use the signed-release workflow only after your Play Store signing key has been configured safely.

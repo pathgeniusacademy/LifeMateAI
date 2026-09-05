@@ -34,11 +34,21 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     var assistantBusy by mutableStateOf(false)
         private set
 
+    var aiConnectionState by mutableStateOf("UNKNOWN")
+        private set
+
+    var aiConnectionMessage by mutableStateOf("")
+        private set
+
     init {
         _tasks.addAll(repo.loadTasks())
         _notes.addAll(repo.loadNotes())
         _habits.addAll(repo.loadHabits())
         _chat.addAll(repo.loadChat())
+        if (settings.aiBackendUrl.isBlank() && BuildConfig.DEFAULT_AI_BACKEND_URL.isNotBlank()) {
+            settings = settings.copy(aiBackendUrl = BuildConfig.DEFAULT_AI_BACKEND_URL.trimEnd('/'))
+            repo.saveSettings(settings)
+        }
         if (_habits.isEmpty()) {
             _habits.addAll(listOf(
                 HabitItem(name = "Read 20 minutes", emoji = "📚"),
@@ -61,6 +71,35 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun updateSettings(newSettings: AppSettings) {
         settings = newSettings
         repo.saveSettings(settings)
+        aiConnectionState = "UNKNOWN"
+        aiConnectionMessage = ""
+    }
+
+    fun testAiConnection(url: String = settings.aiBackendUrl) {
+        val clean = url.trim().trimEnd('/')
+        if (clean.isBlank()) {
+            aiConnectionState = "DISCONNECTED"
+            aiConnectionMessage = "Add your secure backend URL first."
+            return
+        }
+        aiConnectionState = "TESTING"
+        aiConnectionMessage = "Checking secure AI connection…"
+        viewModelScope.launch {
+            val result = AiClient.health(clean)
+            result.onSuccess { model ->
+                aiConnectionState = "CONNECTED"
+                aiConnectionMessage = if (model == "Connected") "AI is connected and ready." else "AI is ready • $model"
+            }.onFailure {
+                aiConnectionState = "DISCONNECTED"
+                aiConnectionMessage = "Couldn’t connect. Check the backend URL and deployment."
+            }
+        }
+    }
+
+    fun clearChat() {
+        _chat.clear()
+        _chat.add(ChatMessage(role = "assistant", text = "Fresh start. What can I help you organize today?"))
+        repo.saveChat(_chat)
     }
 
     fun addTask(task: TaskItem) {
@@ -156,7 +195,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
         assistantBusy = true
         viewModelScope.launch {
-            val result = AiClient.send(settings.aiBackendUrl, clean, previousHistory)
+            val result = AiClient.send(settings.aiBackendUrl, clean, previousHistory, _tasks, _habits, _notes)
             _chat.add(ChatMessage(
                 role = "assistant",
                 text = result.getOrElse { "I couldn’t reach the AI service just now. Your offline tasks, notes, habits and reminders are still available." }

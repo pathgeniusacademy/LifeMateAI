@@ -288,6 +288,8 @@ private fun OnboardingFeature(icon: ImageVector, title: String, subtitle: String
 @Composable
 private fun HomeScreen(viewModel: AppViewModel, nav: NavHostController) {
     val now = remember { LocalDate.now() }
+    var quickTask by remember { mutableStateOf(false) }
+    var quickNote by remember { mutableStateOf(false) }
     val todayTasks = viewModel.tasks.filter { !it.completed && isToday(it.dueAt) }.sortedBy { it.dueAt }
     val openTasks = viewModel.tasks.count { !it.completed }
     val doneHabits = viewModel.habits.count { it.lastCompletedDate == LocalDate.now().toString() }
@@ -399,9 +401,9 @@ private fun HomeScreen(viewModel: AppViewModel, nav: NavHostController) {
             }
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                PremiumMetricCard("Open", "$openTasks", Icons.Default.TaskAlt, Modifier.weight(1f))
-                PremiumMetricCard("Habits", "$doneHabits/${viewModel.habits.size}", Icons.Default.LocalFireDepartment, Modifier.weight(1f))
-                PremiumMetricCard("Notes", "${viewModel.notes.size}", Icons.Default.EditNote, Modifier.weight(1f))
+                PremiumMetricCard("Open", "$openTasks", Icons.Default.TaskAlt, Modifier.weight(1f)) { nav.navigate(Routes.TASKS) }
+                PremiumMetricCard("Habits", "$doneHabits/${viewModel.habits.size}", Icons.Default.LocalFireDepartment, Modifier.weight(1f)) { nav.navigate(Routes.HABITS) }
+                PremiumMetricCard("Notes", "${viewModel.notes.size}", Icons.Default.EditNote, Modifier.weight(1f)) { nav.navigate(Routes.NOTES) }
             }
             Spacer(Modifier.height(22.dp))
         }
@@ -411,11 +413,11 @@ private fun HomeScreen(viewModel: AppViewModel, nav: NavHostController) {
             Spacer(Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 QuickActionCard("Plan my day", "Build a simple schedule", Icons.Default.CalendarMonth, Modifier.weight(1f)) { nav.navigate(Routes.PLANNER) }
-                QuickActionCard("New task", "Capture it before you forget", Icons.Default.AddTask, Modifier.weight(1f)) { nav.navigate(Routes.TASKS) }
+                QuickActionCard("New task", "Capture it before you forget", Icons.Default.AddTask, Modifier.weight(1f)) { quickTask = true }
             }
             Spacer(Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                QuickActionCard("Quick note", "Save an idea", Icons.Default.StickyNote2, Modifier.weight(1f)) { nav.navigate(Routes.NOTES) }
+                QuickActionCard("Quick note", "Save an idea", Icons.Default.StickyNote2, Modifier.weight(1f)) { quickNote = true }
                 QuickActionCard("Habits", "Keep your streak alive", Icons.Default.LocalFireDepartment, Modifier.weight(1f)) { nav.navigate(Routes.HABITS) }
             }
             Spacer(Modifier.height(22.dp))
@@ -474,12 +476,31 @@ private fun HomeScreen(viewModel: AppViewModel, nav: NavHostController) {
         }
         item { Spacer(Modifier.height(18.dp)) }
     }
+
+    if (quickTask) {
+        AddTaskDialog(onDismiss = { quickTask = false }, onAdd = {
+            viewModel.addTask(it)
+            quickTask = false
+        })
+    }
+    if (quickNote) {
+        NoteDialog(
+            note = null,
+            onDismiss = { quickNote = false },
+            onSave = { title, body, _ ->
+                viewModel.addNote(title, body)
+                quickNote = false
+            },
+            onDelete = null
+        )
+    }
 }
 
 @Composable
-private fun PremiumMetricCard(label: String, value: String, icon: ImageVector, modifier: Modifier = Modifier) {
+private fun PremiumMetricCard(label: String, value: String, icon: ImageVector, modifier: Modifier = Modifier, onClick: () -> Unit = {}) {
     Card(
-        modifier = modifier,
+        onClick = onClick,
+        modifier = modifier.heightIn(min = 116.dp),
         shape = RoundedCornerShape(22.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -499,12 +520,13 @@ private fun PremiumMetricCard(label: String, value: String, icon: ImageVector, m
 @Composable
 private fun QuickActionCard(title: String, subtitle: String, icon: ImageVector, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Card(
-        modifier = modifier.clickable(onClick = onClick),
+        onClick = onClick,
+        modifier = modifier.heightIn(min = 132.dp),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(Modifier.padding(16.dp)) {
+        Column(Modifier.fillMaxWidth().padding(16.dp)) {
             Box(
                 Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.primaryContainer),
                 contentAlignment = Alignment.Center
@@ -630,40 +652,130 @@ private fun AddTaskDialog(onDismiss: () -> Unit, onAdd: (TaskItem) -> Unit) {
 private fun AssistantScreen(viewModel: AppViewModel, onSettings: () -> Unit) {
     var input by remember { mutableStateOf("") }
     val connected = viewModel.settings.aiBackendUrl.isNotBlank()
+
+    LaunchedEffect(viewModel.settings.aiBackendUrl) {
+        if (connected && viewModel.aiConnectionState == "UNKNOWN") {
+            viewModel.testAiConnection()
+        }
+    }
+
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Box(
-                Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(
+                Modifier.size(50.dp).clip(RoundedCornerShape(17.dp)).background(
                     Brush.linearGradient(listOf(Color(0xFF4B50DA), Color(0xFF7A62F5)))
                 ),
                 contentAlignment = Alignment.Center
-            ) { Icon(Icons.Default.AutoAwesome, null, tint = Color.White) }
+            ) {
+                Icon(Icons.Default.AutoAwesome, null, tint = Color.White, modifier = Modifier.size(26.dp))
+            }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text("LifeMate", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
+                Text("LifeMate AI", fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(7.dp).clip(CircleShape).background(if (connected) Color(0xFF20B486) else Color(0xFFFFB74D)))
+                    val statusColor = when (viewModel.aiConnectionState) {
+                        "CONNECTED" -> Color(0xFF20B486)
+                        "TESTING" -> Color(0xFF5B7CFA)
+                        else -> Color(0xFFFFB74D)
+                    }
+                    Box(Modifier.size(7.dp).clip(CircleShape).background(statusColor))
                     Spacer(Modifier.width(6.dp))
-                    Text(if (connected) "AI ready" else "Offline mode", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                    Text(
+                        when {
+                            !connected -> "Offline assistant"
+                            viewModel.aiConnectionState == "CONNECTED" -> "AI connected"
+                            viewModel.aiConnectionState == "TESTING" -> "Connecting…"
+                            else -> "AI needs attention"
+                        },
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 12.sp
+                    )
                 }
             }
-            FilledTonalIconButton(onClick = onSettings) { Icon(Icons.Default.Tune, "AI settings") }
-        }
-        LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("Plan my day", "What's next?", "Help me prioritize", "Habit progress").forEach { suggestion ->
-                item { SuggestionChip(onClick = { viewModel.sendMessage(suggestion) }, label = { Text(suggestion) }) }
+            IconButton(onClick = { viewModel.clearChat() }) {
+                Icon(Icons.Default.Refresh, "Clear conversation")
+            }
+            FilledTonalIconButton(onClick = onSettings) {
+                Icon(Icons.Default.Tune, "AI settings")
             }
         }
-        Spacer(Modifier.height(8.dp))
+
+        if (!connected) {
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                shape = RoundedCornerShape(22.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+            ) {
+                Row(
+                    Modifier.fillMaxWidth().padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.surface.copy(alpha = .75f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(Icons.Default.CloudOff, null, tint = MaterialTheme.colorScheme.primary)
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Smart offline mode is active", fontWeight = FontWeight.ExtraBold)
+                        Text(
+                            "Tasks and reminders work now. Connect the secure AI backend for open-ended planning and writing help.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    FilledTonalButton(onClick = onSettings) { Text("Connect") }
+                }
+            }
+        } else if (viewModel.aiConnectionState == "DISCONNECTED") {
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+            ) {
+                Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.ErrorOutline, null, tint = MaterialTheme.colorScheme.error)
+                    Spacer(Modifier.width(10.dp))
+                    Text("AI backend is not reachable. Offline commands still work.", modifier = Modifier.weight(1f), fontSize = 13.sp)
+                    TextButton(onClick = { viewModel.testAiConnection() }) { Text("Retry") }
+                }
+            }
+        }
+
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            listOf(
+                "Plan my day",
+                "What should I do next?",
+                "Help me prioritize",
+                "Summarize my tasks",
+                "Write a quick message"
+            ).forEach { suggestion ->
+                item {
+                    SuggestionChip(
+                        onClick = { viewModel.sendMessage(suggestion) },
+                        label = { Text(suggestion) }
+                    )
+                }
+            }
+        }
+
         LazyColumn(
             modifier = Modifier.weight(1f).fillMaxWidth(),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             items(viewModel.chat, key = { it.id }) { msg -> ChatBubble(msg) }
             if (viewModel.assistantBusy) {
                 item {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 4.dp)) {
                         CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                         Spacer(Modifier.width(10.dp))
                         Text("LifeMate is thinking…", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
@@ -671,6 +783,7 @@ private fun AssistantScreen(viewModel: AppViewModel, onSettings: () -> Unit) {
                 }
             }
         }
+
         Surface(
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 6.dp,
@@ -685,16 +798,23 @@ private fun AssistantScreen(viewModel: AppViewModel, onSettings: () -> Unit) {
                 OutlinedTextField(
                     value = input,
                     onValueChange = { input = it },
-                    placeholder = { Text("Ask anything about your day…") },
+                    placeholder = { Text(if (connected) "Ask LifeMate anything…" else "Try: Remind me tomorrow at 6 pm…") },
                     modifier = Modifier.weight(1f),
                     maxLines = 4,
                     shape = RoundedCornerShape(20.dp)
                 )
                 FilledIconButton(
-                    onClick = { val text = input; input = ""; viewModel.sendMessage(text) },
+                    onClick = {
+                        val text = input
+                        input = ""
+                        viewModel.sendMessage(text)
+                    },
                     enabled = input.isNotBlank() && !viewModel.assistantBusy,
-                    modifier = Modifier.size(52.dp)
-                ) { Icon(Icons.Default.ArrowUpward, "Send") }
+                    modifier = Modifier.size(54.dp),
+                    shape = RoundedCornerShape(18.dp)
+                ) {
+                    Icon(Icons.Default.ArrowUpward, "Send")
+                }
             }
         }
     }
@@ -954,14 +1074,50 @@ private fun SettingsScreen(viewModel: AppViewModel, onBack: () -> Unit) {
             )
             Spacer(Modifier.height(8.dp))
             Text("Leave blank to keep AI disabled. Tasks, notes, habits and reminders still work offline.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(12.dp))
+            OutlinedButton(
+                onClick = { viewModel.testAiConnection(backend) },
+                enabled = backend.isNotBlank() && viewModel.aiConnectionState != "TESTING",
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                if (viewModel.aiConnectionState == "TESTING") {
+                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                } else {
+                    Icon(Icons.Default.CloudDone, null, modifier = Modifier.size(19.dp))
+                }
+                Spacer(Modifier.width(8.dp))
+                Text(if (viewModel.aiConnectionState == "TESTING") "Testing connection…" else "Test AI connection")
+            }
+            AnimatedVisibility(viewModel.aiConnectionMessage.isNotBlank()) {
+                val ok = viewModel.aiConnectionState == "CONNECTED"
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        if (ok) Icons.Default.CheckCircle else Icons.Default.Info,
+                        null,
+                        tint = if (ok) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(7.dp))
+                    Text(
+                        viewModel.aiConnectionMessage,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (ok) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            Spacer(Modifier.height(20.dp))
             Button(
                 onClick = {
                     viewModel.updateSettings(viewModel.settings.copy(displayName = name.ifBlank { "Friend" }, aiBackendUrl = backend.trimEnd('/'), themeMode = theme, notificationsEnabled = notifications))
                     saved = true
                 },
-                modifier = Modifier.fillMaxWidth().height(52.dp)
-            ) { Icon(Icons.Default.Save, null); Spacer(Modifier.width(8.dp)); Text("Save settings") }
+                modifier = Modifier.fillMaxWidth().height(54.dp),
+                shape = RoundedCornerShape(17.dp)
+            ) { Icon(Icons.Default.Save, null); Spacer(Modifier.width(8.dp)); Text("Save settings", fontWeight = FontWeight.ExtraBold) }
             AnimatedVisibility(saved) { Text("Saved ✓", color = MaterialTheme.colorScheme.secondary, modifier = Modifier.padding(top = 10.dp)) }
             Spacer(Modifier.height(26.dp))
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), shape = RoundedCornerShape(20.dp)) {

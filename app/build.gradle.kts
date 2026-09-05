@@ -8,12 +8,17 @@ android {
     namespace = "com.pathgeniusacademy.lifemate"
     compileSdk = 36
 
+    val defaultAiBackendUrl = (System.getenv("AI_BACKEND_URL") ?: "")
+        .replace("\\", "\\\\")
+        .replace("\"", "\\\"")
+
     defaultConfig {
         applicationId = "com.pathgeniusacademy.lifemate"
         minSdk = 26
         targetSdk = 36
-        versionCode = 2
-        versionName = "2.0.0"
+        versionCode = 3
+        versionName = "3.0.0"
+        buildConfigField("String", "DEFAULT_AI_BACKEND_URL", "\"$defaultAiBackendUrl\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
