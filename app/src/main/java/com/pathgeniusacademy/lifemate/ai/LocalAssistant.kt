@@ -22,7 +22,7 @@ object LocalAssistant {
         parseHinglishReminder(raw)?.let { return it }
 
         if (lower.startsWith("add task ")) {
-            val title = raw.substringAfter("add task ", "").trim()
+            val title = raw.drop("add task ".length).trim()
             if (title.isNotBlank()) {
                 val task = TaskItem(title = title)
                 return LocalAssistantResult(true, "Added “$title” to your task list.", task)

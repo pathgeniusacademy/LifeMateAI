@@ -10,6 +10,8 @@ import com.pathgeniusacademy.lifemate.data.LocalRepository
 import com.pathgeniusacademy.lifemate.model.*
 import com.pathgeniusacademy.lifemate.notifications.ReminderScheduler
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import com.pathgeniusacademy.lifemate.domain.Productivity
 import java.time.LocalDate
 import java.time.Instant
 import java.time.ZoneId
@@ -42,7 +44,69 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     var aiConnectionMessage by mutableStateOf("")
         private set
 
+    private val focusPrefs = application.getSharedPreferences("lifemate_focus", 0)
+    var focusMinutes by mutableIntStateOf(focusPrefs.getInt("minutes", 25))
+        private set
+    var focusDeadline by mutableLongStateOf(focusPrefs.getLong("deadline", 0L))
+        private set
+    var focusRemaining by mutableIntStateOf(focusPrefs.getInt("remaining", 25 * 60))
+        private set
+    var focusCompleted by mutableStateOf(false)
+        private set
+    var focusRevision by mutableIntStateOf(0)
+        private set
+    val focusRunning: Boolean get() = focusDeadline > 0
+
+    fun setFocusDuration(minutes: Int) {
+        if (focusRunning || minutes !in listOf(15, 25, 50)) return
+        focusMinutes = minutes
+        resetFocus()
+    }
+    fun toggleFocus() {
+        focusCompleted = false
+        if (focusRunning) {
+            refreshFocus()
+            focusDeadline = 0
+        } else {
+            if (focusRemaining <= 0) focusRemaining = focusMinutes * 60
+            focusDeadline = System.currentTimeMillis() + focusRemaining * 1000L
+        }
+        persistFocus()
+    }
+    fun resetFocus() {
+        focusDeadline = 0
+        focusRemaining = focusMinutes * 60
+        focusCompleted = false
+        persistFocus()
+    }
+    private fun persistFocus() {
+        focusPrefs.edit().putInt("minutes", focusMinutes).putInt("remaining", focusRemaining)
+            .putLong("deadline", focusDeadline).apply()
+    }
+    private fun refreshFocus() {
+        if (!focusRunning) return
+        focusRemaining = Productivity.secondsLeft(focusDeadline, System.currentTimeMillis())
+        if (focusRemaining == 0) {
+            val date = Instant.ofEpochMilli(focusDeadline).atZone(ZoneId.systemDefault()).toLocalDate().toString()
+            val key = "minutes_$date"
+            focusPrefs.edit().putInt(key, focusPrefs.getInt(key, 0) + focusMinutes)
+                .putLong("deadline", 0L).putInt("remaining", 0).apply()
+            focusDeadline = 0
+            focusCompleted = true
+            focusRevision++
+            persistFocus()
+        }
+    }
+    fun focusedMinutes(date: LocalDate): Int {
+        @Suppress("UNUSED_VARIABLE") val revision = focusRevision
+        return focusPrefs.getInt("minutes_$date", 0)
+    }
+    fun habitStreak(habit: HabitItem): Int = Productivity.streak(
+        habit.completionDates, LocalDate.now(), habit.legacyDate, habit.legacyStreak)
+
     init {
+        refreshFocus()
+        viewModelScope.launch { while (true) { delay(1000); refreshFocus() } }
         _tasks.addAll(repo.loadTasks())
         _notes.addAll(repo.loadNotes())
         _habits.addAll(repo.loadHabits())
@@ -51,7 +115,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             settings = settings.copy(aiBackendUrl = BuildConfig.DEFAULT_AI_BACKEND_URL.trimEnd('/'))
             repo.saveSettings(settings)
         }
-        if (_habits.isEmpty()) {
+        if (_habits.isEmpty() && !settings.onboarded) {
             _habits.addAll(listOf(
                 HabitItem(name = "Read 20 minutes", emoji = "📚"),
                 HabitItem(name = "Plan tomorrow", emoji = "🗓️"),
@@ -66,13 +130,20 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun finishOnboarding(name: String) {
-        settings = settings.copy(displayName = name.trim(), onboarded = true)
+        settings = settings.copy(displayName = name.trim().ifBlank { "Friend" }, onboarded = true)
         repo.saveSettings(settings)
     }
 
     fun updateSettings(newSettings: AppSettings) {
+        val remindersChanged = settings.notificationsEnabled != newSettings.notificationsEnabled
         settings = newSettings
         repo.saveSettings(settings)
+        if (remindersChanged) _tasks.forEach { task ->
+            ReminderScheduler.cancel(appContext, task.id)
+            if (settings.notificationsEnabled && (task.dueAt ?: 0L) > System.currentTimeMillis()) {
+                ReminderScheduler.schedule(appContext, task)
+            }
+        }
         aiConnectionState = "UNKNOWN"
         aiConnectionMessage = ""
     }
@@ -131,6 +202,15 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         else if (settings.notificationsEnabled) ReminderScheduler.schedule(appContext, updated)
     }
 
+    fun updateTask(task: TaskItem) {
+        val index = _tasks.indexOfFirst { it.id == task.id }
+        if (index < 0 || task.title.isBlank()) return
+        _tasks[index] = task
+        persistTasks()
+        ReminderScheduler.cancel(appContext, task.id)
+        if (settings.notificationsEnabled) ReminderScheduler.schedule(appContext, task)
+    }
+
     fun deleteTask(task: TaskItem) {
         _tasks.removeAll { it.id == task.id }
         ReminderScheduler.cancel(appContext, task.id)
@@ -165,14 +245,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         val i = _habits.indexOfFirst { it.id == habit.id }
         if (i < 0) return
         val today = LocalDate.now().toString()
-        val yesterday = LocalDate.now().minusDays(1).toString()
-        val isDoneToday = habit.lastCompletedDate == today
-        val updated = if (isDoneToday) {
-            habit.copy(lastCompletedDate = null, streak = (habit.streak - 1).coerceAtLeast(0))
-        } else {
-            val nextStreak = if (habit.lastCompletedDate == yesterday) habit.streak + 1 else 1
-            habit.copy(lastCompletedDate = today, streak = nextStreak)
-        }
+        val dates = habit.completionDates.toMutableSet()
+        if (!dates.remove(today)) dates.add(today)
+        val updated = habit.copy(
+            completionDates = dates.sorted(), lastCompletedDate = dates.maxOrNull(),
+            streak = Productivity.streak(dates.toList(), LocalDate.now(), habit.legacyDate, habit.legacyStreak)
+        )
         _habits[i] = updated
         repo.saveHabits(_habits)
     }
@@ -208,7 +286,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 
         assistantBusy = true
         viewModelScope.launch {
-            val result = AiClient.send(settings.aiBackendUrl, clean, previousHistory, _tasks, _habits, _notes)
+            val result = AiClient.send(settings.aiBackendUrl, clean, previousHistory, _tasks.toList(), _habits.map { it.copy(streak = habitStreak(it)) }, _notes.toList())
             result.onSuccess { ai ->
                 ai.actions.forEach { action ->
                     when (action.type) {
@@ -242,6 +320,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun nextRecurringDue(current: Long?, repeat: String): Long? {
+        if (repeat !in setOf("DAILY", "WEEKLY", "MONTHLY")) return current
         var next = current?.let { Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()) }
             ?: java.time.ZonedDateTime.now().plusHours(1)
         val now = java.time.ZonedDateTime.now()

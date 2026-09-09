@@ -73,7 +73,14 @@ class LocalRepository(context: Context) {
                 add(HabitItem(
                     id = o.getString("id"), name = o.getString("name"), emoji = o.optString("emoji", "✨"),
                     streak = o.optInt("streak", 0),
-                    lastCompletedDate = if (o.isNull("lastCompletedDate")) null else o.optString("lastCompletedDate")
+                    lastCompletedDate = if (o.isNull("lastCompletedDate")) null else o.optString("lastCompletedDate"),
+                    completionDates = o.optJSONArray("completionDates")?.let { a ->
+                        (0 until a.length()).map { a.getString(it) }
+                    } ?: listOfNotNull(if (o.isNull("lastCompletedDate")) null else o.optString("lastCompletedDate").takeIf { it.isNotBlank() }),
+                    legacyDate = if (o.has("completionDates")) {
+                        if (o.isNull("legacyDate")) null else o.optString("legacyDate")
+                    } else if (o.isNull("lastCompletedDate")) null else o.optString("lastCompletedDate"),
+                    legacyStreak = if (o.has("completionDates")) o.optInt("legacyStreak", 0) else o.optInt("streak", 0)
                 ))
             }
         }
@@ -84,6 +91,8 @@ class LocalRepository(context: Context) {
         items.forEach { h -> arr.put(JSONObject().apply {
             put("id", h.id); put("name", h.name); put("emoji", h.emoji); put("streak", h.streak)
             put("lastCompletedDate", h.lastCompletedDate ?: JSONObject.NULL)
+            put("completionDates", JSONArray(h.completionDates))
+            put("legacyDate", h.legacyDate ?: JSONObject.NULL); put("legacyStreak", h.legacyStreak)
         }) }
         prefs.edit().putString(KEY_HABITS, arr.toString()).apply()
     }

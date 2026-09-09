@@ -15,40 +15,40 @@ import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 
 private val LightColors = lightColorScheme(
-    primary = Color(0xFF5357E7),
+    primary = Color(0xFF007F73),
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFE8E9FF),
-    onPrimaryContainer = Color(0xFF20236D),
-    secondary = Color(0xFF0B9F8A),
+    primaryContainer = Color(0xFFCEF5E9),
+    onPrimaryContainer = Color(0xFF004E46),
+    secondary = Color(0xFF687D32),
     onSecondary = Color.White,
-    secondaryContainer = Color(0xFFD9F6EF),
-    onSecondaryContainer = Color(0xFF0A5047),
-    tertiary = Color(0xFFF39B42),
-    background = Color(0xFFF7F8FD),
-    onBackground = Color(0xFF181A24),
+    secondaryContainer = Color(0xFFEEF3D3),
+    onSecondaryContainer = Color(0xFF34451C),
+    tertiary = Color(0xFFC47B42),
+    background = Color(0xFFF5F7F4),
+    onBackground = Color(0xFF172C29),
     surface = Color(0xFFFFFFFF),
-    onSurface = Color(0xFF181A24),
-    surfaceVariant = Color(0xFFF0F2F8),
-    onSurfaceVariant = Color(0xFF676B7C),
-    outline = Color(0xFFD8DBE7),
+    onSurface = Color(0xFF172C29),
+    surfaceVariant = Color(0xFFEAF0EB),
+    onSurfaceVariant = Color(0xFF60736C),
+    outline = Color(0xFFD3DFD8),
     error = Color(0xFFBA1A1A)
 )
 
 private val DarkColors = darkColorScheme(
-    primary = Color(0xFFC3C5FF),
-    onPrimary = Color(0xFF282B8B),
-    primaryContainer = Color(0xFF3C40A8),
-    onPrimaryContainer = Color(0xFFE5E6FF),
-    secondary = Color(0xFF70DDC8),
-    secondaryContainer = Color(0xFF104F46),
+    primary = Color(0xFF7EE0C6),
+    onPrimary = Color(0xFF00382F),
+    primaryContainer = Color(0xFF125447),
+    onPrimaryContainer = Color(0xFFC7F9E9),
+    secondary = Color(0xFFD4E899),
+    secondaryContainer = Color(0xFF39451C),
     tertiary = Color(0xFFFFB870),
-    background = Color(0xFF101117),
-    onBackground = Color(0xFFE7E8EF),
-    surface = Color(0xFF181A21),
-    onSurface = Color(0xFFE7E8EF),
-    surfaceVariant = Color(0xFF232631),
-    onSurfaceVariant = Color(0xFFC3C5D0),
-    outline = Color(0xFF3A3D49)
+    background = Color(0xFF0B1715),
+    onBackground = Color(0xFFE4EFE8),
+    surface = Color(0xFF12231F),
+    onSurface = Color(0xFFE4EFE8),
+    surfaceVariant = Color(0xFF20332D),
+    onSurfaceVariant = Color(0xFFADC4B9),
+    outline = Color(0xFF354D43)
 )
 
 private val LifeMateTypography = Typography(

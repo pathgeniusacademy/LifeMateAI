@@ -1,21 +1,22 @@
-# LifeMate AI — Premium V4
+# LifeMate AI — V5 Focus Edition
 
-LifeMate AI is a native Android daily-life assistant built with Kotlin + Jetpack Compose. V4 focuses on making the app feel much closer to a real premium productivity assistant while keeping the UI simple.
+Native Android organizer, Kotlin + Jetpack Compose.
 
-## What is new in V4
-- Exact **date + time picker** for tasks
-- **Daily / weekly / monthly recurring tasks**
-- Recurring tasks automatically move to their next occurrence when completed
-- Upgraded **7-day planner strip** with date switching
-- **Voice input** in the AI screen through the device speech recognizer
-- AI can now create tasks and notes when the user clearly asks it to
-- AI receives current time, timezone, open tasks, habits and recent notes as context
-- Secure AI actions are returned from the backend and applied by the Android app
-- Better AI prompt chips and loading state
-- Premium Android splash screen
-- Improved repeat/reminder indicators in task cards
-- Version updated to **4.0.0**
+## New in V5
+- Teal / ink visual system, redesigned home, purposeful quick actions and attention queue including overdue tasks.
+- Focus Studio: 15, 25 or 50 minute sessions; pause, resume, confirmed reset and persisted deadline. Completed sessions populate daily focus totals. No background alarm.
+- Seven-day focus bars and actual recorded habit check-ins, with legacy streak migration.
+- Search task title/details, overdue filter, priority sorting, tap-to-edit and confirmed deletion.
+- Chat scrolls to new messages; conversation clearing asks for confirmation.
+- Compact-screen task and note dialogs scroll, bottom navigation respects system insets.
+- Reminder disable cancels queued reminders; enable reschedules future reminders. Worker also checks current task/settings.
+- Existing local data and package ID retained. Version 5.0.0 (code 5).
 
+## Build and verification
+Read START_HERE.txt for GitHub upload and APK/AAB steps. Workflows run unit tests before builds.
+Android SDK/Gradle were unavailable in the editing environment, so compilation, instrumentation and visual device testing remain required. Source/archive checks are not a successful APK build.
+
+## Existing capabilities and setup
 ## Core features
 - Tasks with priority, notes, exact schedule and local reminder
 - Repeating tasks: daily, weekly, monthly

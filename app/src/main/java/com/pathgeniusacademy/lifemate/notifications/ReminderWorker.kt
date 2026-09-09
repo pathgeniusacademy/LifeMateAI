@@ -13,7 +13,11 @@ import com.pathgeniusacademy.lifemate.R
 
 class ReminderWorker(appContext: Context, params: WorkerParameters) : Worker(appContext, params) {
     override fun doWork(): Result {
-        val title = inputData.getString("title") ?: "You have something to do"
+        val repo = com.pathgeniusacademy.lifemate.data.LocalRepository(applicationContext)
+        if (!repo.loadSettings().notificationsEnabled) return Result.success()
+        val currentTask = repo.loadTasks().firstOrNull { it.id == inputData.getString("taskId") }
+        if (currentTask == null || currentTask.completed || !currentTask.reminderEnabled) return Result.success()
+        val title = currentTask.title
         val taskId = inputData.getString("taskId") ?: "task"
         val intent = Intent(applicationContext, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP

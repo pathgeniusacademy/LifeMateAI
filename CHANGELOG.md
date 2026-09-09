@@ -1,3 +1,13 @@
+# 5.0.0 — Focus Edition
+
+Redesigned dashboard, coordinated light/dark palette, Focus Studio, weekly progress,
+recorded habit history, task editing/search/overdue/priority filtering, confirmation
+for task deletion and clearing chat, chat auto-scroll, compact dialog scrolling,
+reminder toggle fixes, bounded recurrence fallback and corrected AI context disclosure.
+
+Existing local records are loaded in place. Legacy habit history before the last
+recorded check-in is unavailable; legacy streak counts are retained as a baseline.
+
 # Changelog
 
 ## 4.0.0

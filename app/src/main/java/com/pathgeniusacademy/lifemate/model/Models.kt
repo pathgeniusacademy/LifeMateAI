@@ -28,7 +28,10 @@ data class HabitItem(
     val name: String,
     val emoji: String = "✨",
     val streak: Int = 0,
-    val lastCompletedDate: String? = null
+    val lastCompletedDate: String? = null,
+    val completionDates: List<String> = emptyList(),
+    val legacyDate: String? = null,
+    val legacyStreak: Int = 0
 )
 
 data class ChatMessage(

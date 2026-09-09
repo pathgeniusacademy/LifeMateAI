@@ -2,7 +2,7 @@
     <style name="Theme.LifeMateAI" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:fontFamily">sans</item>
         <item name="android:windowLightStatusBar">false</item>
-        <item name="android:statusBarColor">#5B5FEF</item>
+        <item name="android:statusBarColor">#103D34</item>
         <item name="android:navigationBarColor">#FFFFFF</item>
         <item name="android:windowActionModeOverlay">true</item>
     </style>

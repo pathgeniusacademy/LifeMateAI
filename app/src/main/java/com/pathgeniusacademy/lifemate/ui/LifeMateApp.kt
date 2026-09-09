@@ -8,10 +8,14 @@ import android.speech.RecognizerIntent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -44,6 +48,8 @@ import java.time.*
 import java.time.format.DateTimeFormatter
 
 private object Routes {
+    const val FOCUS = "focus"
+    const val INSIGHTS = "insights"
     const val HOME = "home"
     const val TASKS = "tasks"
     const val AI = "assistant"
@@ -94,7 +100,7 @@ private fun MainShell(viewModel: AppViewModel) {
                     NavigationBar(
                         containerColor = Color.Transparent,
                         tonalElevation = 0.dp,
-                        modifier = Modifier.height(78.dp)
+                        modifier = Modifier.heightIn(min = 80.dp)
                     ) {
                         bottom.forEach { item ->
                             NavigationBarItem(
@@ -129,6 +135,8 @@ private fun MainShell(viewModel: AppViewModel) {
             startDestination = Routes.HOME,
             modifier = Modifier.padding(padding)
         ) {
+            composable(Routes.FOCUS) { FocusScreen(viewModel, onBack = { nav.popBackStack() }) }
+            composable(Routes.INSIGHTS) { InsightsScreen(viewModel, onBack = { nav.popBackStack() }) }
             composable(Routes.HOME) { HomeScreen(viewModel, nav) }
             composable(Routes.TASKS) { TasksScreen(viewModel) }
             composable(Routes.AI) { AssistantScreen(viewModel, onSettings = { nav.navigate(Routes.SETTINGS) }) }
@@ -161,7 +169,7 @@ private fun OnboardingScreen(onFinish: (String) -> Unit) {
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    listOf(Color(0xFF4146D8), Color(0xFF6D5DFB), Color(0xFFF6F7FF))
+                    listOf(Color(0xFF103D34), Color(0xFF176A58), Color(0xFF0B221B))
                 )
             )
             .padding(horizontal = 22.dp)
@@ -174,7 +182,7 @@ private fun OnboardingScreen(onFinish: (String) -> Unit) {
                 .background(Color.White.copy(alpha = 0.08f))
         )
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Column {
@@ -296,213 +304,101 @@ private fun OnboardingFeature(icon: ImageVector, title: String, subtitle: String
 
 @Composable
 private fun HomeScreen(viewModel: AppViewModel, nav: NavHostController) {
-    val now = remember { LocalDate.now() }
     var quickTask by remember { mutableStateOf(false) }
     var quickNote by remember { mutableStateOf(false) }
-    val todayTasks = viewModel.tasks.filter { !it.completed && isToday(it.dueAt) }.sortedBy { it.dueAt }
-    val openTasks = viewModel.tasks.count { !it.completed }
-    val doneHabits = viewModel.habits.count { it.lastCompletedDate == LocalDate.now().toString() }
-    val greeting = when (LocalTime.now().hour) {
-        in 5..11 -> "Good morning"
-        in 12..16 -> "Good afternoon"
-        else -> "Good evening"
-    }
-    val nextTask = todayTasks.firstOrNull()
-    val habitProgress = if (viewModel.habits.isEmpty()) 0f else doneHabits.toFloat() / viewModel.habits.size
-
-    LazyColumn(
-        modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background),
-        contentPadding = PaddingValues(horizontal = 18.dp, vertical = 18.dp)
-    ) {
+    val today = LocalDate.now()
+    val pending = viewModel.tasks.filter { !it.completed }
+    val attention = pending.filter { taskDate(it.dueAt)?.let { d -> !d.isAfter(today) } == true }
+        .sortedWith(compareBy<TaskItem> { it.dueAt }.thenBy { it.priority != "HIGH" })
+    val habitsDone = viewModel.habits.count { it.lastCompletedDate == today.toString() }
+    val greeting = when (LocalTime.now().hour) { in 5..11 -> "Good morning"; in 12..16 -> "Good afternoon"; else -> "Good evening" }
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(20.dp, 16.dp, 20.dp, 24.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    Modifier.size(46.dp).clip(RoundedCornerShape(15.dp)).background(MaterialTheme.colorScheme.primaryContainer),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(viewModel.settings.displayName.take(1).uppercase(), fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.primary)
-                }
-                Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
-                    Text("$greeting,", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
-                    Text(viewModel.settings.displayName, fontSize = 23.sp, fontWeight = FontWeight.ExtraBold)
+                    Text("L I F E M A T E", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Black)
+                    Spacer(Modifier.height(8.dp))
+                    Text("$greeting,", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(viewModel.settings.displayName.ifBlank { "Friend" }, style = MaterialTheme.typography.headlineLarge)
                 }
-                FilledTonalIconButton(onClick = { nav.navigate(Routes.SETTINGS) }) {
-                    Icon(Icons.Default.Settings, "Settings")
+                FilledTonalIconButton(onClick = { nav.navigate(Routes.SETTINGS) }, modifier = Modifier.size(50.dp)) {
+                    Icon(Icons.Default.Tune, "Settings")
                 }
             }
-            Spacer(Modifier.height(20.dp))
         }
-
         item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(30.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
-            ) {
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .background(Brush.linearGradient(listOf(Color(0xFF4B50DA), Color(0xFF6D5DFB), Color(0xFF6F7CF5))))
-                        .padding(20.dp)
-                ) {
-                    Column {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Column(Modifier.weight(1f)) {
-                                Text(now.format(DateTimeFormatter.ofPattern("EEEE, d MMMM")), color = Color.White.copy(alpha = .78f), fontSize = 13.sp)
-                                Spacer(Modifier.height(4.dp))
-                                Text(
-                                    if (todayTasks.isEmpty()) "Your day is clear" else "${todayTasks.size} things need your attention",
-                                    color = Color.White,
-                                    fontSize = 25.sp,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    lineHeight = 30.sp
-                                )
-                            }
-                            Box(
-                                Modifier.size(54.dp).clip(CircleShape).background(Color.White.copy(alpha = .14f)),
-                                contentAlignment = Alignment.Center
-                            ) { Icon(Icons.Default.AutoAwesome, null, tint = Color.White, modifier = Modifier.size(28.dp)) }
-                        }
-                        Spacer(Modifier.height(18.dp))
-                        Surface(color = Color.White.copy(alpha = .12f), shape = RoundedCornerShape(20.dp)) {
-                            Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Box(
-                                    Modifier.size(42.dp).clip(RoundedCornerShape(13.dp)).background(Color.White.copy(alpha = .14f)),
-                                    contentAlignment = Alignment.Center
-                                ) { Icon(if (nextTask == null) Icons.Default.WbSunny else Icons.Default.Schedule, null, tint = Color.White) }
-                                Spacer(Modifier.width(12.dp))
-                                Column(Modifier.weight(1f)) {
-                                    Text(if (nextTask == null) "Nothing urgent" else "Next up", color = Color.White.copy(alpha = .72f), fontSize = 12.sp)
-                                    Text(
-                                        nextTask?.title ?: "A good moment to plan ahead",
-                                        color = Color.White,
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    nextTask?.dueAt?.let { Text(formatDue(it), color = Color.White.copy(alpha = .72f), fontSize = 12.sp) }
-                                }
-                            }
-                        }
-                        Spacer(Modifier.height(14.dp))
-                        Button(
-                            onClick = { nav.navigate(Routes.AI) },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color(0xFF4C50D7)),
-                            shape = RoundedCornerShape(16.dp),
-                            modifier = Modifier.fillMaxWidth().height(50.dp)
-                        ) {
-                            Icon(Icons.Default.AutoAwesome, null, Modifier.size(19.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("Ask LifeMate", fontWeight = FontWeight.ExtraBold)
-                        }
+            Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(30.dp)).background(Brush.linearGradient(listOf(Color(0xFF103D34), Color(0xFF176A58))))) {
+                androidx.compose.foundation.Canvas(Modifier.matchParentSize()) {
+                    drawCircle(Color(0xFFB5E6B2).copy(alpha = .07f), radius = size.width * .43f, center = androidx.compose.ui.geometry.Offset(size.width, size.height * .1f))
+                    drawCircle(Color.White.copy(alpha = .05f), radius = size.width * .27f, center = androidx.compose.ui.geometry.Offset(size.width * .94f, size.height * .13f))
+                }
+                Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    Text(today.format(DateTimeFormatter.ofPattern("EEEE, dd MMM")).uppercase(), color = Color(0xFFB8DDCE), style = MaterialTheme.typography.labelMedium, letterSpacing = 1.sp)
+                    Text("A little focus.\nA better day.", color = Color.White, fontSize = 34.sp, lineHeight = 39.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1).sp)
+                    Text(if (attention.isEmpty()) "Make space for what matters to you." else "${attention.size} pending ${if (attention.size == 1) "task needs" else "tasks need"} your attention.", color = Color(0xFFD0E4DB), lineHeight = 22.sp)
+                    Button(onClick = { nav.navigate(Routes.FOCUS) }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD6F1A4), contentColor = Color(0xFF173B26)), contentPadding = PaddingValues(horizontal = 22.dp, vertical = 14.dp)) {
+                        Icon(Icons.Default.PlayArrow, null, Modifier.size(22.dp)); Spacer(Modifier.width(8.dp))
+                        Text(if (viewModel.focusRunning) "Return to focus" else "Start a focus session")
                     }
                 }
             }
-            Spacer(Modifier.height(22.dp))
         }
-
         item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Today at a glance", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, modifier = Modifier.weight(1f))
-                TextButton(onClick = { nav.navigate(Routes.PLANNER) }) { Text("Open planner") }
-            }
-            Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                PremiumMetricCard("Open", "$openTasks", Icons.Default.TaskAlt, Modifier.weight(1f)) { nav.navigate(Routes.TASKS) }
-                PremiumMetricCard("Habits", "$doneHabits/${viewModel.habits.size}", Icons.Default.LocalFireDepartment, Modifier.weight(1f)) { nav.navigate(Routes.HABITS) }
-                PremiumMetricCard("Notes", "${viewModel.notes.size}", Icons.Default.EditNote, Modifier.weight(1f)) { nav.navigate(Routes.NOTES) }
+                PremiumMetricCard("To do", "${pending.size}", Icons.Default.TaskAlt, Modifier.weight(1f)) { nav.navigate(Routes.TASKS) }
+                PremiumMetricCard("Habits", "$habitsDone/${viewModel.habits.size}", Icons.Default.LocalFireDepartment, Modifier.weight(1f)) { nav.navigate(Routes.HABITS) }
+                PremiumMetricCard("Focus min", "${viewModel.focusedMinutes(today)}", Icons.Default.Timelapse, Modifier.weight(1f)) { nav.navigate(Routes.INSIGHTS) }
             }
-            Spacer(Modifier.height(22.dp))
         }
-
         item {
-            Text("Quick actions", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
-            Spacer(Modifier.height(10.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                QuickActionCard("Plan my day", "Build a simple schedule", Icons.Default.CalendarMonth, Modifier.weight(1f)) { nav.navigate(Routes.PLANNER) }
-                QuickActionCard("New task", "Capture it before you forget", Icons.Default.AddTask, Modifier.weight(1f)) { quickTask = true }
-            }
-            Spacer(Modifier.height(10.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                QuickActionCard("Quick note", "Save an idea", Icons.Default.StickyNote2, Modifier.weight(1f)) { quickNote = true }
-                QuickActionCard("Habits", "Keep your streak alive", Icons.Default.LocalFireDepartment, Modifier.weight(1f)) { nav.navigate(Routes.HABITS) }
-            }
-            Spacer(Modifier.height(22.dp))
-        }
-
-        item {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Today's tasks", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, modifier = Modifier.weight(1f))
-                if (todayTasks.isNotEmpty()) AssistChip(onClick = { nav.navigate(Routes.TASKS) }, label = { Text("${todayTasks.size} left") })
-            }
-            Spacer(Modifier.height(10.dp))
-        }
-        if (todayTasks.isEmpty()) {
-            item {
-                EmptyCard(
-                    icon = Icons.Default.WbSunny,
-                    title = "No timed tasks today",
-                    body = "Enjoy the breathing room or add something important."
-                )
-                Spacer(Modifier.height(20.dp))
-            }
-        } else {
-            items(todayTasks.take(4), key = { it.id }) { task ->
-                TaskRow(task, onToggle = { viewModel.toggleTask(task) }, modifier = Modifier.padding(vertical = 4.dp))
-            }
-            item { Spacer(Modifier.height(18.dp)) }
-        }
-
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(26.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
-            ) {
-                Column(Modifier.padding(18.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text("Daily rhythm", color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = .7f), fontSize = 12.sp)
-                            Text("Habit progress", color = MaterialTheme.colorScheme.onSecondaryContainer, fontSize = 21.sp, fontWeight = FontWeight.ExtraBold)
-                        }
-                        Text("${(habitProgress * 100).toInt()}%", color = MaterialTheme.colorScheme.onSecondaryContainer, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold)
+            Card(onClick = { nav.navigate(Routes.AI) }, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer), shape = RoundedCornerShape(24.dp)) {
+                Row(Modifier.fillMaxWidth().padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.AutoAwesome, null, Modifier.size(30.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Less mental clutter.", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onPrimaryContainer)
+                        Text("Talk it through with LifeMate", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onPrimaryContainer)
                     }
-                    Spacer(Modifier.height(10.dp))
-                    LinearProgressIndicator(
-                        progress = { habitProgress },
-                        modifier = Modifier.fillMaxWidth().height(8.dp).clip(CircleShape),
-                        color = MaterialTheme.colorScheme.secondary,
-                        trackColor = MaterialTheme.colorScheme.surface.copy(alpha = .55f)
-                    )
+                    Icon(Icons.Default.ArrowForward, "Open assistant", tint = MaterialTheme.colorScheme.onPrimaryContainer)
                 }
             }
+        }
+        item {
+            Text("Make room for more", style = MaterialTheme.typography.titleLarge)
+            Spacer(Modifier.height(12.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                QuickActionCard("New task", "Clear your mind", Icons.Default.AddTask, Modifier.weight(1f)) { quickTask = true }
+                QuickActionCard("Quick note", "Keep a good idea", Icons.Default.EditNote, Modifier.weight(1f)) { quickNote = true }
+            }
             Spacer(Modifier.height(10.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                QuickActionCard("My planner", "See the day ahead", Icons.Default.CalendarMonth, Modifier.weight(1f)) { nav.navigate(Routes.PLANNER) }
+                QuickActionCard("My progress", "Every step counts", Icons.Default.Insights, Modifier.weight(1f)) { nav.navigate(Routes.INSIGHTS) }
+            }
+        }
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Your next moves", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                TextButton(onClick = { nav.navigate(Routes.TASKS) }) { Text("View all") }
+            }
+        }
+        if (attention.isEmpty()) item {
+            EmptyCard(Icons.Default.WbSunny, "No tasks due today", if (pending.isEmpty()) "Add your first task to get started." else "${pending.size} open tasks are waiting in your task list.")
+        }
+        items(attention.take(4), key = { it.id }) { task -> TaskRow(task, onToggle = { viewModel.toggleTask(task) }) }
+        item {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Small daily wins", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                TextButton(onClick = { nav.navigate(Routes.HABITS) }) { Text("Habits") }
+            }
         }
         items(viewModel.habits.take(3), key = { it.id }) { habit ->
-            HabitCompactRow(habit, onToggle = { viewModel.toggleHabit(habit) }, modifier = Modifier.padding(vertical = 4.dp))
+            HabitCompactRow(habit.copy(streak = viewModel.habitStreak(habit)), onToggle = { viewModel.toggleHabit(habit) })
         }
-        item { Spacer(Modifier.height(18.dp)) }
+        item { Text("One thing at a time. You've got this.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.fillMaxWidth(), textAlign = androidx.compose.ui.text.style.TextAlign.Center) }
     }
-
-    if (quickTask) {
-        AddTaskDialog(onDismiss = { quickTask = false }, onAdd = {
-            viewModel.addTask(it)
-            quickTask = false
-        })
-    }
-    if (quickNote) {
-        NoteDialog(
-            note = null,
-            onDismiss = { quickNote = false },
-            onSave = { title, body, _ ->
-                viewModel.addNote(title, body)
-                quickNote = false
-            },
-            onDelete = null
-        )
-    }
+    if (quickTask) AddTaskDialog(onDismiss = { quickTask = false }, onAdd = { viewModel.addTask(it); quickTask = false })
+    if (quickNote) NoteDialog(null, onDismiss = { quickNote = false }, onSave = { title, body, _ -> viewModel.addNote(title, body); quickNote = false }, onDelete = null)
 }
 
 @Composable
@@ -568,23 +464,36 @@ private fun QuickAction(label: String, icon: ImageVector, onClick: () -> Unit) {
 @Composable
 private fun TasksScreen(viewModel: AppViewModel) {
     var showAdd by remember { mutableStateOf(false) }
-    var filter by remember { mutableStateOf("OPEN") }
+    var filter by rememberSaveable { mutableStateOf("OPEN") }
+    var query by rememberSaveable { mutableStateOf("") }
+    var priorityFirst by rememberSaveable { mutableStateOf(false) }
+    var editing by remember { mutableStateOf<TaskItem?>(null) }
+    var deleting by remember { mutableStateOf<TaskItem?>(null) }
     val list = when (filter) {
-        "TODAY" -> viewModel.tasks.filter { isToday(it.dueAt) }
+        "OVERDUE" -> viewModel.tasks.filter { !it.completed && it.dueAt?.let { due -> due < System.currentTimeMillis() } == true }
+        "TODAY" -> viewModel.tasks.filter { !it.completed && isToday(it.dueAt) }
         "DONE" -> viewModel.tasks.filter { it.completed }
         else -> viewModel.tasks.filter { !it.completed }
-    }.sortedWith(compareBy<TaskItem> { it.completed }.thenBy { it.dueAt ?: Long.MAX_VALUE })
+    }.filter { it.title.contains(query, true) || it.notes.contains(query, true) }
+        .sortedWith(compareBy<TaskItem> { it.completed }.thenBy { if (priorityFirst) when(it.priority) { "HIGH" -> 0; "MEDIUM" -> 1; else -> 2 } else 0 }.thenBy { it.dueAt ?: Long.MAX_VALUE })
 
     Scaffold(
         floatingActionButton = { ExtendedFloatingActionButton(onClick = { showAdd = true }, icon = { Icon(Icons.Default.Add, null) }, text = { Text("New task") }) }
     ) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(18.dp, 18.dp, 18.dp, 110.dp)) {
             item {
-                ScreenTitle("Tasks", "Capture it, schedule it, finish it.")
+                ScreenTitle("Tasks", "One clear next step. Then another.")
+                Spacer(Modifier.height(14.dp))
+                OutlinedTextField(query, { query = it }, placeholder = { Text("Search tasks and details") }, leadingIcon = { Icon(Icons.Default.Search, null) }, singleLine = true, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("${list.size} tasks", modifier = Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    TextButton(onClick = { priorityFirst = !priorityFirst }) { Icon(Icons.Default.Sort, null); Text(if (priorityFirst) "Priority first" else "Due date") }
+                }
                 Spacer(Modifier.height(14.dp))
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     item { FilterChip(filter == "OPEN", { filter = "OPEN" }, { Text("Open") }) }
                     item { FilterChip(filter == "TODAY", { filter = "TODAY" }, { Text("Today") }) }
+                    item { FilterChip(filter == "OVERDUE", { filter = "OVERDUE" }, { Text("Overdue") }) }
                     item { FilterChip(filter == "DONE", { filter = "DONE" }, { Text("Done") }) }
                 }
                 Spacer(Modifier.height(14.dp))
@@ -593,10 +502,16 @@ private fun TasksScreen(viewModel: AppViewModel) {
                 item { EmptyCard(Icons.Default.TaskAlt, "Nothing here", "Your list is clear for this filter.") }
             } else {
                 items(list, key = { it.id }) { task ->
-                    TaskRow(task, onToggle = { viewModel.toggleTask(task) }, onDelete = { viewModel.deleteTask(task) }, modifier = Modifier.padding(vertical = 5.dp))
+                    TaskRow(task, onToggle = { viewModel.toggleTask(task) }, onDelete = { deleting = task }, modifier = Modifier.padding(vertical = 5.dp).clickable { editing = task })
                 }
             }
         }
+    }
+    editing?.let { task ->
+        AddTaskDialog(onDismiss = { editing = null }, onAdd = { viewModel.updateTask(it); editing = null }, existing = task)
+    }
+    deleting?.let { task ->
+        AlertDialog(onDismissRequest = { deleting = null }, title = { Text("Delete task?") }, text = { Text(task.title) }, confirmButton = { TextButton(onClick = { viewModel.deleteTask(task); deleting = null }) { Text("Delete") } }, dismissButton = { TextButton(onClick = { deleting = null }) { Text("Keep task") } })
     }
     if (showAdd) {
         AddTaskDialog(onDismiss = { showAdd = false }, onAdd = { viewModel.addTask(it); showAdd = false })
@@ -604,17 +519,17 @@ private fun TasksScreen(viewModel: AppViewModel) {
 }
 
 @Composable
-private fun AddTaskDialog(onDismiss: () -> Unit, onAdd: (TaskItem) -> Unit) {
+private fun AddTaskDialog(onDismiss: () -> Unit, onAdd: (TaskItem) -> Unit, existing: TaskItem? = null) {
     val context = LocalContext.current
-    val initial = remember { LocalDateTime.now().withSecond(0).withNano(0).plusHours(1) }
-    var title by remember { mutableStateOf("") }
-    var notes by remember { mutableStateOf("") }
-    var priority by remember { mutableStateOf("MEDIUM") }
+    val initial = remember { existing?.dueAt?.let { Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDateTime() } ?: LocalDateTime.now().withSecond(0).withNano(0).plusHours(1) }
+    var title by remember { mutableStateOf(existing?.title.orEmpty()) }
+    var notes by remember { mutableStateOf(existing?.notes.orEmpty()) }
+    var priority by remember { mutableStateOf(existing?.priority ?: "MEDIUM") }
     var selectedDate by remember { mutableStateOf(initial.toLocalDate()) }
     var selectedTime by remember { mutableStateOf(initial.toLocalTime()) }
-    var hasDueDate by remember { mutableStateOf(true) }
-    var reminder by remember { mutableStateOf(true) }
-    var repeat by remember { mutableStateOf("NONE") }
+    var hasDueDate by remember { mutableStateOf(existing?.let { it.dueAt != null } ?: true) }
+    var reminder by remember { mutableStateOf(existing?.reminderEnabled ?: true) }
+    var repeat by remember { mutableStateOf(existing?.repeat ?: "NONE") }
 
     fun openDatePicker() {
         DatePickerDialog(
@@ -640,13 +555,13 @@ private fun AddTaskDialog(onDismiss: () -> Unit, onAdd: (TaskItem) -> Unit) {
         onDismissRequest = onDismiss,
         title = {
             Column {
-                Text("Create task", fontWeight = FontWeight.ExtraBold)
+                Text(if (existing == null) "Create task" else "Edit task", fontWeight = FontWeight.ExtraBold)
                 Text("Add it once. Let LifeMate remember it.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },
         text = {
             Column(
-                modifier = Modifier.fillMaxWidth().animateContentSize(),
+                modifier = Modifier.fillMaxWidth().heightIn(max = 440.dp).verticalScroll(rememberScrollState()).animateContentSize(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 OutlinedTextField(
@@ -740,7 +655,7 @@ private fun AddTaskDialog(onDismiss: () -> Unit, onAdd: (TaskItem) -> Unit) {
                         ZonedDateTime.of(selectedDate, selectedTime, ZoneId.systemDefault()).toInstant().toEpochMilli()
                     } else null
                     onAdd(
-                        TaskItem(
+                        (existing ?: TaskItem(title = "")).copy(
                             title = title.trim(),
                             notes = notes.trim(),
                             dueAt = due,
@@ -755,7 +670,7 @@ private fun AddTaskDialog(onDismiss: () -> Unit, onAdd: (TaskItem) -> Unit) {
             ) {
                 Icon(Icons.Default.AddTask, null, Modifier.size(18.dp))
                 Spacer(Modifier.width(7.dp))
-                Text("Add task", fontWeight = FontWeight.Bold)
+                Text(if (existing == null) "Add task" else "Save changes", fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
@@ -767,6 +682,13 @@ private fun AddTaskDialog(onDismiss: () -> Unit, onAdd: (TaskItem) -> Unit) {
 private fun AssistantScreen(viewModel: AppViewModel, onSettings: () -> Unit) {
     var input by remember { mutableStateOf("") }
     var voiceStatus by remember { mutableStateOf<String?>(null) }
+    val chatScroll = rememberLazyListState()
+    var confirmClear by remember { mutableStateOf(false) }
+    LaunchedEffect(viewModel.chat.size, viewModel.assistantBusy) {
+        val count = viewModel.chat.size + if (viewModel.assistantBusy) 1 else 0
+        if (count > 0) chatScroll.animateScrollToItem(count - 1)
+    }
+    if (confirmClear) AlertDialog(onDismissRequest = { confirmClear = false }, title = { Text("Clear conversation?") }, text = { Text("Your tasks and notes will stay saved.") }, confirmButton = { TextButton(onClick = { viewModel.clearChat(); confirmClear = false }) { Text("Clear") } }, dismissButton = { TextButton(onClick = { confirmClear = false }) { Text("Cancel") } })
     val connected = viewModel.settings.aiBackendUrl.isNotBlank()
     val context = LocalContext.current
 
@@ -804,7 +726,7 @@ private fun AssistantScreen(viewModel: AppViewModel, onSettings: () -> Unit) {
         ) {
             Box(
                 Modifier.size(52.dp).clip(RoundedCornerShape(18.dp)).background(
-                    Brush.linearGradient(listOf(Color(0xFF4B50DA), Color(0xFF7A62F5)))
+                    Brush.linearGradient(listOf(Color(0xFF103D34), Color(0xFF26856D)))
                 ),
                 contentAlignment = Alignment.Center
             ) { Icon(Icons.Default.AutoAwesome, null, tint = Color.White, modifier = Modifier.size(27.dp)) }
@@ -830,7 +752,7 @@ private fun AssistantScreen(viewModel: AppViewModel, onSettings: () -> Unit) {
                     )
                 }
             }
-            IconButton(onClick = { viewModel.clearChat() }) { Icon(Icons.Default.Refresh, "Clear conversation") }
+            IconButton(onClick = { confirmClear = true }, enabled = !viewModel.assistantBusy) { Icon(Icons.Default.Refresh, "Clear conversation") }
             FilledTonalIconButton(onClick = onSettings) { Icon(Icons.Default.Tune, "AI settings") }
         }
 
@@ -884,6 +806,7 @@ private fun AssistantScreen(viewModel: AppViewModel, onSettings: () -> Unit) {
         }
 
         LazyColumn(
+            state = chatScroll,
             modifier = Modifier.weight(1f).fillMaxWidth(),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -1029,7 +952,7 @@ private fun NoteDialog(note: NoteItem?, onDismiss: () -> Unit, onSave: (String, 
         onDismissRequest = onDismiss,
         title = { Text(if (note == null) "New note" else "Edit note") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(Modifier.heightIn(max = 400.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(title, { title = it }, label = { Text("Title") }, singleLine = true)
                 OutlinedTextField(body, { body = it }, label = { Text("Note") }, minLines = 5, maxLines = 10)
                 if (note != null) {
@@ -1083,7 +1006,7 @@ private fun HabitsScreen(viewModel: AppViewModel) {
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
                             Text(habit.name, fontWeight = FontWeight.Bold)
-                            Text("🔥 ${habit.streak} day streak", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                            Text("🔥 ${viewModel.habitStreak(habit)} day streak", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                         }
                         Checkbox(checked = habit.lastCompletedDate == today, onCheckedChange = { viewModel.toggleHabit(habit) })
                         IconButton(onClick = { viewModel.deleteHabit(habit) }) { Icon(Icons.Default.DeleteOutline, "Delete habit") }
@@ -1296,7 +1219,7 @@ private fun SettingsScreen(viewModel: AppViewModel, onBack: () -> Unit) {
                 Column(Modifier.padding(16.dp)) {
                     Text("Privacy snapshot", fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(6.dp))
-                    Text("• Tasks, notes and habits are stored locally on your device.\n• AI is optional.\n• When AI is connected, only chat content sent to the assistant goes to your backend.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("• Tasks, notes and habits are stored locally on your device.\n• AI is optional.\n• When AI is connected, chat history and task, habit and note context are sent to your backend to help answer your requests.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         }
@@ -1325,8 +1248,8 @@ private fun TaskRow(task: TaskItem, onToggle: () -> Unit, onDelete: (() -> Unit)
             Checkbox(checked = task.completed, onCheckedChange = { onToggle() })
             Column(Modifier.weight(1f).padding(horizontal = 6.dp)) {
                 Text(task.title, fontWeight = FontWeight.Bold, color = if (task.completed) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    task.dueAt?.let { Text(formatDue(it), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    task.dueAt?.let { Text((if (!task.completed && it < System.currentTimeMillis()) "Overdue · " else "") + formatDue(it), style = MaterialTheme.typography.bodySmall, color = if (!task.completed && it < System.currentTimeMillis()) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant) }
                     if (task.priority == "HIGH") Text("High", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
                     if (task.repeat != "NONE") {
                         Row(verticalAlignment = Alignment.CenterVertically) {

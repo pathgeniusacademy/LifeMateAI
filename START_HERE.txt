@@ -1,38 +1,22 @@
-LIFEMATE AI — PREMIUM V4 START HERE
-===================================
+LIFEMATE AI V5 — START HERE
 
-YOU ALREADY HAVE THE GITHUB REPO
---------------------------------
-1) Extract this V4 ZIP.
-2) Open the extracted folder.
-3) Upload/replace everything INSIDE it in the ROOT of your existing GitHub repository.
-4) Commit the changes.
-5) GitHub > Actions > Build Android APK and AAB > Run workflow.
-6) Wait for the green tick.
-7) Download Artifacts > LifeMateAI-debug-APK.
-8) Extract the artifact ZIP and install the APK on your Android phone.
+1. ZIP extract karo. LifeMateAI-main folder kholo.
+2. Is folder KE ANDAR ke files/folders apne existing GitHub repository ke root mein replace karo. Outer folder ko nested upload mat karo.
+3. New files bhi include karo: ProductivityScreens.kt, domain/Productivity.kt, app/src/test/.
+4. GitHub Actions: Build Android APK and AAB -> Run workflow.
+5. Green build ke baad LifeMateAI-debug-APK artifact download/extract karke APK install karo.
+6. Play Store ke liye existing signing key ke saath signed-release workflow use karo; unsigned AAB upload mat karo.
 
-WHAT V4 ADDS
-------------
-- Exact date picker + time picker
-- Daily / weekly / monthly repeating tasks
-- Better 7-day planner
-- Voice button in AI chat
-- AI can create tasks and notes when asked
-- Premium splash screen
-- Better reminder/repeat indicators
+Version: 5.0.0 / code 5. Same package ID. Existing app update ke liye same signing key zaroori hai.
+Uninstall karne se local data delete ho sakta hai. Debug aur release apps ke package IDs alag hain.
 
-REAL AI
--------
-The Android AI code and secure Cloudflare Worker are included.
-The OpenAI API key MUST stay on the backend, never inside the app.
+NEW: redesigned teal dashboard, Focus Studio (15/25/50 minutes), weekly insights,
+recorded habit history, task search/edit/overdue filter/priority sort, safer deletion,
+auto-scrolling chat, improved small-screen dialogs and reminder settings fixes.
 
-Read: AI_SETUP_EASY.md
+AI backend pehle se connected hai to settings preserve hongi. Nahi connected hai to
+AI_SETUP_EASY.md dekho. No API key or live backend has been added by this update.
 
-If AI is not connected yet, the app still works for local tasks, notes, habits,
-planner, reminders and basic offline assistant commands.
-
-PLAY STORE
-----------
-The normal build workflow produces a debug APK and an unsigned release AAB.
-Use docs/PLAY_STORE_SIGNING.md before your final Play Store release.
+VALIDATION: Source and ZIP checks performed. Android build, on-device layout and
+JUnit execution require the included GitHub workflow / Android Studio; they were
+not run in the editing environment. Focus has no background alarm.
